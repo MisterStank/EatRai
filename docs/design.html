@@ -1,0 +1,579 @@
+<title>EatRai Design Brief</title>
+<meta name="description" content="Market research, architecture, and the taste + compatibility algorithms for a swipe-to-discover restaurant app." />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --bg: #f6f2ea;
+    --surface: #fffdf8;
+    --surface-alt: #efe8db;
+    --line: #ddd2bf;
+    --text: #221d16;
+    --dim: #6b6151;
+    --chili: #cf3222;
+    --lime: #4f7d1f;
+    --gold: #a9760c;
+    --mono-bg: #f0eadd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16130f;
+      --surface: #1e1a15;
+      --surface-alt: #272119;
+      --line: #38301f;
+      --text: #f1eadd;
+      --dim: #a49782;
+      --chili: #e8503f;
+      --lime: #8fc457;
+      --gold: #e0a63c;
+      --mono-bg: #241f18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16130f;
+    --surface: #1e1a15;
+    --surface-alt: #272119;
+    --line: #38301f;
+    --text: #f1eadd;
+    --dim: #a49782;
+    --chili: #e8503f;
+    --lime: #8fc457;
+    --gold: #e0a63c;
+    --mono-bg: #241f18;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif;
+    line-height: 1.65;
+    margin: 0;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px 120px; }
+  header.hero { max-width: 760px; margin: 0 auto; padding: 88px 24px 40px; }
+  .kicker {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--chili);
+  }
+  h1 {
+    font-family: Fraunces, Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2.4rem, 6vw, 3.7rem);
+    line-height: 1.04;
+    text-wrap: balance;
+    margin: 16px 0 12px;
+  }
+  h1 .thai { display: block; font-size: 0.5em; color: var(--dim); font-weight: 500; margin-top: 8px; }
+  .lede { font-size: 1.18rem; color: var(--dim); max-width: 60ch; }
+
+  h2 {
+    font-family: Fraunces, Georgia, serif;
+    font-weight: 600;
+    font-size: 1.7rem;
+    margin: 72px 0 6px;
+    scroll-margin-top: 24px;
+    text-wrap: balance;
+  }
+  h2 .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.8rem; color: var(--chili); vertical-align: middle;
+    margin-right: 12px;
+  }
+  h3 { font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 1.18rem; margin: 34px 0 4px; }
+  p { margin: 12px 0; }
+  a { color: var(--chili); }
+  strong { font-weight: 600; }
+  ul, ol { padding-left: 20px; }
+  li { margin: 6px 0; }
+
+  .rule { height: 1px; background: var(--line); border: 0; margin: 8px 0 0; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin: 20px 0;
+  }
+  .card h3 { margin-top: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 22px 0; border: 1px solid var(--line); border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; min-width: 560px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-alt); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  tr:last-child td { border-bottom: 0; }
+  td code { font-size: 0.85em; }
+
+  code, pre {
+    font-family: "JetBrains Mono", monospace;
+  }
+  code { background: var(--mono-bg); padding: 1px 5px; border-radius: 5px; font-size: 0.88em; }
+  pre {
+    background: var(--mono-bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  pre code { background: none; padding: 0; }
+
+  .tag {
+    display: inline-block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--dim);
+    margin-right: 6px;
+  }
+  .tag.yes { color: var(--lime); border-color: var(--lime); }
+  .tag.no { color: var(--chili); border-color: var(--chili); }
+
+  figure { margin: 26px 0; }
+  figcaption { font-size: 0.85rem; color: var(--dim); margin-top: 8px; font-family: "JetBrains Mono", monospace; }
+  svg { max-width: 100%; height: auto; display: block; }
+
+  .toc {
+    position: sticky; top: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.75rem;
+    padding: 10px 24px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    z-index: 5;
+  }
+  .toc a { color: var(--dim); text-decoration: none; }
+  .toc a:hover { color: var(--chili); }
+
+  .callout { border-left: 3px solid var(--chili); padding-left: 16px; margin: 20px 0; color: var(--dim); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+
+<nav class="toc">
+  <a href="#market">Market</a>
+  <a href="#positioning">Positioning</a>
+  <a href="#product">Product</a>
+  <a href="#arch">Architecture</a>
+  <a href="#stack">Stack</a>
+  <a href="#data">Data model</a>
+  <a href="#taste">Taste model</a>
+  <a href="#compat">Compatibility</a>
+  <a href="#different">What's different</a>
+  <a href="#sessions">Group sessions</a>
+  <a href="#roadmap">Roadmap</a>
+</nav>
+
+<header class="hero">
+  <div class="kicker">Product &amp; Technical Design</div>
+  <h1>EatRai
+    <span class="thai">“กินไร?” — <em>so, what are we eating?</em></span>
+  </h1>
+  <p class="lede">A location-aware restaurant app with a Tinder-style swipe deck. It learns
+  your palate from every swipe, turns that into recommendations, and lets friends see how
+  compatible their tastes really are before they argue about dinner.</p>
+</header>
+
+<div class="wrap">
+
+  <h2 id="market"><span class="num">01</span>What's already in the market</h2>
+  <p>The space splits into three clusters, and almost every product sits in exactly one of them.
+  EatRai's bet is that the three belong together.</p>
+
+  <h3>Cluster A — Group decision tools ("Chicken Tinder")</h3>
+  <p>A host opens a room, friends join with a code, everyone swipes the same nearby list, and the
+  app surfaces the restaurants <em>everyone</em> liked. The swiping is a voting mechanic, not a
+  discovery habit — you use it for ten minutes and close it.</p>
+  <ul>
+    <li><strong>Food Swipe / Food Swiper</strong>, <strong>DineFinder</strong>,
+      <strong>Dinn'r</strong>, <strong>Hungree</strong>, <strong>Tine</strong>,
+      <strong>Sawa Eats</strong>, <strong>SwipeEats</strong> — near-identical: real-time room,
+      anonymous yes/no, "it's a match" when the group converges.</li>
+    <li><strong>Findalicious</strong> (formerly "Chicken Tinder") and <strong>SwipEats</strong> —
+      open-source takes on the same idea.</li>
+    <li><strong>Munch</strong> — added group scheduling / calendar on top of the vote.</li>
+  </ul>
+
+  <h3>Cluster B — Solo "what do I want" swipers</h3>
+  <p>No social layer. You swipe meal photos or restaurants to shortcut the "I don't know, you
+  pick" spiral for yourself.</p>
+  <ul>
+    <li><strong>Feed Me</strong>, <strong>Entrée</strong>, <strong>Tonight's Bite</strong>,
+      <strong>Food Flip</strong> — swipe dishes/venues, get details on a right-swipe.</li>
+  </ul>
+
+  <h3>Cluster C — Taste profiles &amp; ranked lists</h3>
+  <p>Not swipe-first, but this is where the durable products live. They build a real model of
+  your taste and keep you coming back to log meals.</p>
+  <ul>
+    <li><strong>Beli</strong> — the reference point. You rank a new restaurant by pairwise
+      comparison against ones you've already been to ("which did you like more?"), producing a
+      personal 0–10 score. It then computes a <strong>Match Score</strong> between you and each
+      friend from how your rankings correlate, shows a blended "friends' rating" per restaurant,
+      and recommends from all of it. Invite-driven, social, gamified with lists and streaks.</li>
+    <li><strong>Paire</strong> (PersonalTaste™), <strong>TasteFit</strong>,
+      <strong>TasteBuds</strong>, <strong>YumYumYo</strong>, <strong>Craive</strong>,
+      DoorDash's <strong>Zesty</strong> — various "AI learns your palate" recommenders, mostly
+      onboarding-quiz + feedback loop, little or no swipe UI.</li>
+    <li><strong>World of Mouth</strong> — curated-by-experts guide; the anti-algorithm take.</li>
+  </ul>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Product</th><th>Core loop</th><th>Problem it solves</th><th>Target user</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Food Swipe / DineFinder / Dinn'r</strong></td>
+        <td>Host a room → group swipes nearby list → show unanimous likes</td>
+        <td>Group decision paralysis; "no one will just pick"</td>
+        <td>Friend groups, couples, coworkers deciding <em>right now</em></td>
+      </tr>
+      <tr>
+        <td><strong>Findalicious / SwipEats</strong> (OSS)</td>
+        <td>Same, lightweight web rooms, no account</td>
+        <td>Same, zero-friction, throwaway</td>
+        <td>Students, casual groups</td>
+      </tr>
+      <tr>
+        <td><strong>Feed Me / Food Flip</strong></td>
+        <td>Solo swipe on dishes/venues → details on like</td>
+        <td>Solo indecision, "what am I even craving"</td>
+        <td>Individuals, frequent takeout orderers</td>
+      </tr>
+      <tr>
+        <td><strong>Beli</strong></td>
+        <td>Visit → rank by pairwise comparison → personal score → friend match scores → recs</td>
+        <td>Trustworthy recs from people <em>like you</em>; a memory of every place you've been</td>
+        <td>Urban "foodies," 22–40, travel a lot, share lists</td>
+      </tr>
+      <tr>
+        <td><strong>Paire / TasteFit / Craive</strong></td>
+        <td>Taste quiz → recommender → thumbs feedback</td>
+        <td>Generic star ratings don't reflect <em>my</em> taste</td>
+        <td>People overwhelmed by Google/Yelp choice</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>What the market teaches us</h3>
+  <ul>
+    <li><strong>Group-swipe apps have a retention problem.</strong> The loop is episodic and the
+      switching cost is zero — a dozen of them exist because none of them stuck.</li>
+    <li><strong>Beli's moat is the taste graph, not the UI.</strong> Pairwise ranking is clever
+      but it's <em>work</em>; a lot of users bounce off the effort.</li>
+    <li><strong>Nobody owns "swipe-native discovery that also builds a real taste profile and a
+      social compatibility layer."</strong> That's the gap.</li>
+  </ul>
+
+  <h2 id="positioning"><span class="num">02</span>Where EatRai fits</h2>
+  <p>Keep the <em>fun, zero-effort</em> input method from Cluster A, and use it to build the
+  <em>durable taste graph</em> from Cluster C — so the swipe isn't a throwaway vote, it's how you
+  train the thing.</p>
+  <div class="card">
+    <h3>One-line positioning</h3>
+    <p>“Swipe the restaurants around you. EatRai learns what you actually like, tells you where
+    to go, and shows which friends you should never let pick dinner.”</p>
+  </div>
+  <table style="width:100%; margin-top:8px; font-size:0.92rem;">
+    <tbody>
+      <tr><td><span class="tag yes">keep</span></td><td>Swipe deck, nearby-only, "it's a match" group rooms, invite-driven social graph</td></tr>
+      <tr><td><span class="tag no">drop</span></td><td>Beli-style pairwise ranking chore; onboarding taste quiz as the <em>only</em> signal</td></tr>
+      <tr><td><span class="tag">add</span></td><td>Every solo swipe updates a taste vector; compatibility is derived, not manually rated; recommendations rank the deck itself</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Primary target user:</strong> 20–35, lives in or near a dense-ish city, eats out or
+  orders in 3+ times a week, decides where to eat <em>with other people</em> regularly, already
+  comfortable with swipe UIs. <strong>Secondary:</strong> travelers who want fast, taste-matched
+  local picks without reading 40 reviews.</p>
+
+  <h2 id="product"><span class="num">03</span>Product — the six capabilities</h2>
+  <ol>
+    <li><strong>Swipe deck.</strong> Full-bleed photo card: name, price, cuisine tags, distance,
+      open-now, and a "% your taste" badge once the profile exists. Right = like, left = pass,
+      up = superlike (strong signal + saved to a shortlist), tap = detail sheet (menu, hours,
+      map, friends who liked it).</li>
+    <li><strong>Right / left / super.</strong> Every swipe is an event: <code>+1 / −1 / +2</code>.
+      Left swipes matter — they're negative training data, weighted lower than likes so a pass
+      doesn't nuke a whole cuisine.</li>
+    <li><strong>Nearby browsing.</strong> Deck is always built from
+      <code>ST_DWithin(location, me, radius)</code>. Default 2 km, adjustable. No radius, no deck —
+      this is a "where can I go now" product, not a wishlist of places across the world.</li>
+    <li><strong>Learns your taste.</strong> A 64-dim taste vector over cuisines + attributes,
+      updated online on every swipe (details in §06). Cold start: a 5-tap "pick cuisines you
+      love" seeds the vector; it's fully replaced by real swipe behavior within ~30 swipes.</li>
+    <li><strong>Recommendations.</strong> Not a separate feed — the deck <em>is</em> the
+      recommender. Cards are ordered by cosine similarity between your taste vector and each
+      restaurant's feature vector, lightly blended with external rating and freshness, using a
+      pgvector index so it's one query.</li>
+    <li><strong>Friend compatibility.</strong> Add friends by invite/handle. For any pair we show
+      a 0–100 score built from (a) taste-vector similarity and (b) observed agreement on
+      restaurants both have swiped, blended by how much shared history exists (§07). Surfaces as
+      "you + Mai: 82% — you both love northern Thai and neither of you can do sushi."</li>
+  </ol>
+
+  <h2 id="arch"><span class="num">04</span>Architecture</h2>
+  <figure>
+    <svg viewBox="0 0 720 340" role="img" aria-label="System architecture diagram">
+      <defs>
+        <style>
+          .b{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+          .t{fill:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px}
+          .d{fill:var(--dim);font-family:'JetBrains Mono',monospace;font-size:10px}
+          .l{stroke:var(--dim);stroke-width:1.5;fill:none}
+          .accent{stroke:var(--chili)}
+        </style>
+      </defs>
+      <rect class="b" x="16" y="130" width="150" height="70" rx="10"/>
+      <text class="t" x="34" y="160">React Native</text>
+      <text class="d" x="34" y="178">Expo · TS · Reanimated</text>
+
+      <line class="l accent" x1="166" y1="165" x2="250" y2="165"/>
+      <text class="d" x="172" y="158">HTTPS / JSON</text>
+
+      <rect class="b" x="250" y="60" width="170" height="210" rx="10"/>
+      <text class="t" x="266" y="86">Go API (chi)</text>
+      <text class="d" x="266" y="108">· auth (JWT)</text>
+      <text class="d" x="266" y="126">· /deck  /swipes</text>
+      <text class="d" x="266" y="144">· /friends /compat</text>
+      <text class="d" x="266" y="162">· /sessions + WS hub</text>
+      <text class="d" x="266" y="188">taste pkg</text>
+      <text class="d" x="266" y="204">· vector update</text>
+      <text class="d" x="266" y="220">· compatibility</text>
+
+      <line class="l" x1="420" y1="120" x2="500" y2="120"/>
+      <rect class="b" x="500" y="70" width="200" height="90" rx="10"/>
+      <text class="t" x="516" y="98">Postgres 16</text>
+      <text class="d" x="516" y="116">PostGIS — nearby</text>
+      <text class="d" x="516" y="132">pgvector — taste ANN</text>
+      <text class="d" x="516" y="148">source of truth</text>
+
+      <line class="l" x1="420" y1="180" x2="500" y2="180"/>
+      <rect class="b" x="500" y="170" width="200" height="55" rx="10"/>
+      <text class="t" x="516" y="196">Redis</text>
+      <text class="d" x="516" y="212">sessions · WS fan-out · rate limit</text>
+
+      <line class="l" x1="335" y1="270" x2="335" y2="300"/>
+      <rect class="b" x="250" y="300" width="170" height="34" rx="10"/>
+      <text class="d" x="266" y="322">nightly: Places sync worker</text>
+
+      <line class="l" x1="420" y1="317" x2="620" y2="317"/>
+      <rect class="b" x="500" y="240" width="200" height="40" rx="10"/>
+      <text class="d" x="516" y="264">Google Places API</text>
+    </svg>
+    <figcaption>One Go binary (API + worker), Postgres as source of truth, Redis for ephemeral state.</figcaption>
+  </figure>
+  <p>Deliberately boring. No microservices, no Kafka, no separate ML service — the "ML" is a
+  64-float dot product that runs inside Postgres. One deployable, one database, scales to a very
+  large user base before any of this needs revisiting.</p>
+
+  <h2 id="stack"><span class="num">05</span>Tech stack &amp; rationale</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Why this and not the obvious alternative</th></tr></thead>
+    <tbody>
+      <tr><td>Mobile</td><td>React Native + Expo, TypeScript</td><td>Requested. Expo for OTA updates + managed native. <code>react-native-gesture-handler</code> + <code>reanimated</code> run the swipe on the UI thread (60fps) — don't hand-roll <code>PanResponder</code>.</td></tr>
+      <tr><td>Nav / state</td><td>React Navigation, Zustand</td><td>Zustand over Redux — the client state is tiny (deck buffer, session, auth).</td></tr>
+      <tr><td>API</td><td>Go 1.23, chi router, pgx</td><td>Requested. chi over gin — stdlib-shaped, no magic. pgx over an ORM — the geo + vector queries are hand-written SQL anyway.</td></tr>
+      <tr><td>DB</td><td>Postgres 16 + PostGIS + pgvector</td><td>Requested. PostGIS gives correct spherical distance + a GiST index. pgvector gives an IVFFlat/HNSW index so taste ranking is one indexed query, not an app-side scan. One DB, not Postgres + a vector store.</td></tr>
+      <tr><td>Ephemeral</td><td>Redis 7</td><td>Group-session membership, WebSocket pub/sub fan-out, rate limiting. Nothing here needs to survive a restart.</td></tr>
+      <tr><td>Place data</td><td>Google Places (New) API</td><td>Best coverage + photos. <strong>Synced nightly into our own <code>restaurants</code> table</strong> per city cell — swiping never triggers a billed call; we pay per city per day, not per card.</td></tr>
+      <tr><td>Auth</td><td>Sign in with Apple / Google → our JWT</td><td>No passwords. Short-lived access + refresh token in <code>expo-secure-store</code>.</td></tr>
+      <tr><td>Infra</td><td>Single container (Fly.io / Render / ECS) + managed Postgres</td><td>Go binary embeds the migrations and the worker; <code>GOOSE</code>/<code>migrate</code> on boot.</td></tr>
+      <tr><td>Observability</td><td>OpenTelemetry → Grafana/Tempo, Sentry (RN + Go)</td><td>Trace the deck query — p95 latency is the whole UX.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="data"><span class="num">06</span>Data model</h2>
+  <p>Full DDL in <code>backend/migrations/0001_init.up.sql</code>. The shape:</p>
+  <pre><code>taste_dimensions   append-only list; row order == index in every vector
+users              handle, taste_vector vector(64), swipe_count
+restaurants        place_id, location geography(Point), feature_vector vector(64),
+                   cuisines[], price_level, rating, photo_urls[]
+swipes             (user_id, restaurant_id) PK, direction {−1,1,2}, session_id?
+friendships        a_id &lt; b_id, status pending|accepted
+compatibility      cached pair score: score, overlap_n, agree_n
+sessions           code, center geography, radius_m, filters jsonb
+session_members    (session_id, user_id)</code></pre>
+  <p>Two indexes carry the product:</p>
+  <pre><code>CREATE INDEX ON restaurants USING GIST (location);                    -- nearby
+CREATE INDEX ON restaurants USING ivfflat (feature_vector vector_cosine_ops); -- taste</code></pre>
+
+  <h3>Taste space (the 64 dims)</h3>
+  <p>Roughly 44 cuisine dims (<code>thai_isaan</code>, <code>thai_central</code>, <code>sushi</code>,
+  <code>ramen</code>, <code>neapolitan_pizza</code>, <code>smash_burger</code>, <code>szechuan</code>,
+  <code>levantine</code>, …) + 20 attribute dims (<code>spicy</code>, <code>cheap_eats</code>,
+  <code>fine_dining</code>, <code>healthy</code>, <code>cozy</code>, <code>trendy</code>,
+  <code>late_night</code>, <code>good_for_groups</code>, <code>veg_forward</code>, …). A
+  restaurant's <code>feature_vector</code> is built once at sync time from its Places
+  types/attributes/price; it's L2-normalized so cosine behaves.</p>
+
+  <h2 id="taste"><span class="num">07</span>Taste-learning algorithm</h2>
+  <p>Each user carries <strong>two</strong> vectors in the same 64-dim space, both updated in the
+  request that handled the swipe — no training job, no model server.</p>
+  <table style="width:100%; font-size:0.92rem; margin:14px 0;">
+    <tbody>
+      <tr><td><strong><code>core</code></strong></td><td>An online weighted centroid of everything you've reacted to. Slow-moving — "who you are." Liked places pull it toward them; passes nudge it away at ~⅓ the weight.</td></tr>
+      <tr><td><strong><code>recent</code></strong></td><td>The same signal as an exponential moving average with a ~25-swipe half-life. Fast-moving — "what you've been into lately."</td></tr>
+    </tbody>
+  </table>
+  <pre><code>// dir: +1 like, +2 superlike, −1 pass ;  w = dir&gt;0 ? dir : −0.35
+core'   = (core·n + feat·w) / (n + |w|)                  // incremental weighted mean
+a       = 1 − exp(−ln2 / 25)                             // recent decay
+recent' = (1−a)·recent + a·(feat · sign(w))
+// recommendations rank against Blend(core, recent, 0.25) — mostly you, nudged by mood</code></pre>
+  <p>Reference: <code>backend/internal/taste/taste.go</code> — <code>UpdateCore</code>,
+  <code>UpdateRecent</code>, <code>Blend</code>. Tests show <code>core</code> aligning to a liked
+  cuisine within a handful of swipes and <code>recent</code> tracking a short-term cuisine binge
+  harder than <code>core</code>.</p>
+  <div class="callout">Why a centroid, not logistic regression or matrix factorization? At this
+  scale there isn't enough per-user data for anything heavier to win, and a centroid is
+  <em>inspectable</em> — we hand the user "your top dims are Isaan, Spicy, Cheap eats" and
+  "lately: more Sushi, less Fine dining." Swap in a two-tower model later behind the same
+  <code>feature_vector</code> interface once there's a swipe corpus worth training on.</div>
+  <p>The <code>feature_vector</code> for each restaurant is built once at sync time
+  (<code>taste.BuildRestaurantVector</code>) from Places types, name, editorial summary, price
+  level and attribute flags via a keyword→dimension map, then L2-normalized.</p>
+
+  <h3>Recommendation query</h3>
+  <pre><code>SELECT r.*, ST_Distance(r.location, $me) AS dist
+FROM restaurants r
+WHERE ST_DWithin(r.location, $me, $radius)
+  AND NOT EXISTS (SELECT 1 FROM swipes s
+                  WHERE s.user_id = $uid AND s.restaurant_id = r.id)
+ORDER BY 0.85 * (1 - (r.feature_vector &lt;=&gt; $taste))    -- cosine similarity
+       + 0.15 * (COALESCE(r.rating,3.5) / 5)            -- light popularity prior
+DESC
+LIMIT 20;</code></pre>
+  <p>In the build, PostGIS fetches ~120 nearby unseen candidates with their feature vectors and
+  the <code>deck</code> package does the final scoring in Go — cosine fit + a light rating &amp;
+  distance prior + decaying early-stage exploration + a cuisine-diversity pass so you don't get
+  five ramen shops in a row. New users (no vector) fall back to rating order. At larger scale the
+  candidate fetch moves onto the pgvector IVFFlat index. Implemented in
+  <code>deck.RankSolo</code>.</p>
+
+  <h2 id="compat"><span class="num">08</span>Friend compatibility</h2>
+  <p>Two signals, blended by confidence:</p>
+  <ol>
+    <li><strong>Vector similarity</strong> — <code>(cos(u_a, u_b) + 1) / 2</code>. Always available,
+      even for friends who've never swiped the same place.</li>
+    <li><strong>Observed agreement</strong> — of the restaurants <em>both</em> swiped, the fraction
+      they swiped the same direction. Ground truth, but noisy when the overlap is small.</li>
+  </ol>
+  <pre><code>vecPart   = (cos(u_a, u_b) + 1) / 2
+agreeRate = agree_n / overlap_n
+conf      = min(0.85, sqrt(overlap_n) / 8)          // trust grows with shared history
+score     = 100 * ( conf·agreeRate + (1−conf)·vecPart )</code></pre>
+  <p>So new friends see a taste-profile estimate; friends with 40+ shared swipes see something
+  that's ~85% driven by what actually happened. The <code>basis</code> field in the API response
+  tells the client which regime you're in (<code>taste-profile</code> / <code>blended</code> /
+  <code>shared-history</code>) so the copy can be honest. Implemented in <code>Compatibility</code>;
+  recomputed on each swipe and cached in the <code>compatibility</code> table.</p>
+  <p>Beyond the number, <code>taste.Agreements</code> diffs the two vectors to generate the human
+  line — the API returns <code>bothLove: ["Isaan", "Spicy"]</code> and
+  <code>neitherLikes: ["Fine dining"]</code> so the friend row reads
+  “82% — you both love Isaan &amp; Spicy; you clash on Fine dining.”</p>
+
+  <h2 id="different"><span class="num">09</span>What makes EatRai different</h2>
+  <p>A dozen group-swipe apps exist and none stuck (§01). Three deliberate departures:</p>
+
+  <h3>a. Legible learning</h3>
+  <p>Every card carries <code>reasons</code> — “Because you love Isaan · Spicy · Cheap eats”
+  (<code>taste.Explain</code>: dims where both your taste and the restaurant score high). The
+  <strong>Palate</strong> screen shows your top dimensions as confidence bars and your mood
+  shift. The bet: if the profile is visibly paying off by swipe ~15, EatRai stops being a
+  throwaway vote app. This is the anti-churn mechanism.</p>
+
+  <h3>b. Consensus decks — async &amp; min-regret</h3>
+  <p>Every existing group app needs everyone in a live room and picks by <em>average</em> fit,
+  which quietly steamrolls the outlier. EatRai's <code>/v1/consensus</code> takes any set of
+  friends and ranks nearby restaurants by a <strong>maximin</strong> rule:</p>
+  <pre><code>groupScore(r) = 0.7 · min over members of  (cos(memberVec, feat)+1)/2
+              + 0.3 · mean of the same
+              + 0.05 · (members who already liked r)
+              = 0            if any member already passed r</code></pre>
+  <p>So the deck surfaces places the <em>least-happy</em> member still likes — and it works off
+  each person's stored taste vector, so nobody has to be online. A test asserts a restaurant one
+  member would dislike can never top the group deck. (<code>taste.ConsensusScore</code>,
+  <code>deck.RankConsensus</code>.)</p>
+
+  <h3>c. Stretch pick + adventure streak</h3>
+  <p>Pure matching engines never push you outward. Once you have a profile, one card per deck is
+  a deliberate <strong>stretch</strong>: strong in dimensions you're weak on, but with a thread
+  of overlap so it's a stretch and not a dart (<code>taste.StretchScore</code>). Accepting it
+  extends an <code>adventure_streak</code>; passing resets it. Shown stretch picks are recorded
+  so they don't repeat.</p>
+
+  <h2 id="sessions"><span class="num">11</span>Group sessions ("it's a match")</h2>
+  <p>Two modes on one <code>sessions</code> table:</p>
+  <ol>
+    <li><strong>Live</strong> — host creates a session, gets a 4-char code, friends join, everyone
+      swipes the same deck ordered by the group's blended taste (via <code>deck.RankConsensus</code>
+      so early cards already skew toward a match).</li>
+    <li><strong>Async</strong> — same, but the session has a <code>quorum</code> and a 24h
+      <code>expires_at</code>; people swipe whenever.</li>
+  </ol>
+  <p>On each right-swipe inside a session, <code>db.CheckMatch</code> runs one grouped query: has
+  any restaurant reached <code>quorum</code> right-swipes with zero passes? If so the session
+  closes with <code>result_restaurant_id</code> set. Clients currently learn this by polling
+  <code>GET /v1/sessions/{id}/state</code> — cheap, no infra. A Redis pub/sub + WebSocket push is
+  the obvious upgrade once live sessions are common. Session swipes still train the individual's
+  taste vector (<code>session_id</code> is just tagged on the row).</p>
+
+  <h2 id="roadmap"><span class="num">12</span>Roadmap</h2>
+  <div class="card">
+    <h3>Scaffolded now ✅</h3>
+    <p>Go API + Postgres schema · dual-vector taste model, compatibility, maximin consensus,
+    stretch scoring (all unit-tested) · solo &amp; consensus deck rankers · Places (New) sync
+    worker + local seed command · <strong>native Sign in with Apple + Google wired end to end</strong>
+    — provider ID token → multi-audience JWKS verification (signature, issuer, audience set,
+    expiry, Apple hashed-nonce round-trip, all unit-tested) → our access/refresh JWTs, plus a
+    <code>DEV_LOGIN</code> bypass · RN app: swipe deck with reasons/stretch, Palate screen,
+    Friends + compatibility, Consensus screen, poll-based session state.</p>
+  </div>
+  <div class="card">
+    <h3>MVP to ship (weeks 1–6)</h3>
+    <p>OAuth client-id config for the launch build · cold-start cuisine picker · Places sync for
+    one launch city + photo attribution compliance · detail sheet (menu, hours, map) · superlike
+    shortlist screen · crash/analytics. Goal: does the swipe→recommendation loop retain a solo
+    user for two weeks?</p>
+  </div>
+  <div class="card">
+    <h3>v1 (weeks 7–12) — social live</h3>
+    <p>Friend invites via deep link · live sessions over WebSocket + Redis fan-out · push
+    notifications for async poll results · "friends who liked this" enrichment on the solo deck.</p>
+  </div>
+  <div class="card">
+    <h3>Later</h3>
+    <p>Multi-city + travel mode (home taste vs. local availability) · dish-level swiping (menu
+    photos) · reservations / delivery deep-links · two-tower recommender trained on the swipe
+    corpus · "plan" (pick a time, not just a place).</p>
+  </div>
+
+  <h3>Key risks</h3>
+  <table style="width:100%; font-size:0.92rem;">
+    <tbody>
+      <tr><td><strong>Cold deck in sparse areas</strong></td><td>Nearby + unseen + good photos can run dry fast. Mitigate: expand radius automatically, allow "surprise me" beyond radius, seed launch in dense neighborhoods only.</td></tr>
+      <tr><td><strong>Places API cost / ToS</strong></td><td>Caching place data has licensing limits (photo/attribution rules, refresh windows). Read the Places ToS before launch; budget a Foursquare/OSM fallback.</td></tr>
+      <tr><td><strong>Retention (the Cluster A trap)</strong></td><td>If the taste profile isn't visibly paying off by swipe ~15, we're just another group-vote app. The per-card <code>reasons</code> and the Palate screen exist to make the learning legible early — this is the core product risk.</td></tr>
+      <tr><td><strong>Swipe fatigue vs. signal</strong></td><td>Need ~20–30 swipes for a usable vector but users tire by ~15. Mitigate with the cuisine-pick cold start and the decaying early exploration term in <code>deck.RankSolo</code>.</td></tr>
+      <tr><td><strong>Feature-vector quality</strong></td><td>The keyword→dimension map is a heuristic; a mislabelled restaurant pollutes taste vectors. Mitigate: hand-curate the map for the launch city, add a "wrong cuisine?" report on the detail sheet, revisit with an embedding model later.</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="rule" style="margin-top:56px" />
+  <p style="color:var(--dim); font-size:0.85rem; font-family:'JetBrains Mono',monospace; margin-top:20px">
+    Companion to the scaffold in this repo · <code>go build ./...</code> clean,
+    <code>go test ./...</code> green (taste + deck) · RN app wired end-to-end against the API
+    with a dev-login bypass.
+  </p>
+
+</div>
