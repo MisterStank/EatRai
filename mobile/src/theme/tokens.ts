@@ -1,27 +1,32 @@
-import { Platform } from "react-native";
+// EatRai — "Fresh Market" visual language.
+// Warm paper ground, ink text, one tangerine accent, confident swipe colours.
 
-// EatRai visual tokens — warm charcoal ground, chili-red brand, lime "yes".
-// Deliberately not the generic cream + terracotta look.
 export const color = {
-  bg: "#161311",
-  surface: "#211C18",
-  surfaceAlt: "#2C2521",
-  line: "#38302A",
-  text: "#F5EFEA",
-  textDim: "#A79E96",
-  primary: "#E23A2E", // chili red — brand / pass
-  yes: "#7BC043", // lime — like
-  gold: "#F2B441", // superlike / ratings / streak
-  stretch: "#7C6BF0", // violet — the "stretch" pick
+  paper: "#FBF7F0",
+  surface: "#FFFFFF",
+  surfaceAlt: "#F1EBDF",
+  ink: "#17140F",
+  inkSoft: "#6B6358",
+  inkFaint: "#9A9084",
+  line: "#E8E0D3",
+  accent: "#FF5A1F",
+  like: "#12B76A",
+  likeBright: "#17E07A",
+  nope: "#F0442E",
+  gold: "#FFC24B",
+  onPhoto: "#FFFFFF",
 };
 
-export const radius = { card: 26, pill: 999, sm: 10 };
+export const radius = { card: 26, lg: 18, md: 14, sm: 10, pill: 999 };
+
 export const space = (n: number) => n * 4;
 
-// System fonts keep the skeleton runnable with zero font setup. Swap in
-// Fraunces (display) + Inter (body) via expo-font when you wire real assets.
+// Font family keys — resolved by useFonts() in App.tsx.
 export const font = {
-  display: Platform.select({ ios: "Georgia", android: "serif", default: "serif" }),
-  body: Platform.select({ ios: "System", android: "sans-serif", default: "System" }),
-  label: Platform.select({ ios: "System", android: "sans-serif-medium", default: "System" }),
+  display: "Bricolage_800ExtraBold",
+  displaySemi: "Bricolage_700Bold",
+  bodyReg: "Hanken_400Regular",
+  body: "Hanken_500Medium",
+  bodySemi: "Hanken_600SemiBold",
+  bodyBold: "Hanken_700Bold",
 };

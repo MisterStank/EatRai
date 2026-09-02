@@ -1,112 +1,95 @@
 # EatRai — "กินไร?" / What to eat?
 
-A restaurant-discovery app with a Tinder-style swipe deck. Swipe nearby
-restaurants; the app learns your taste, generates recommendations, and lets
-friends compare how compatible their palates are.
+A restaurant-finder with a Tinder-style swipe deck. Point it at your location,
+optionally filter by category, swipe through nearby places, and open the ones you
+like in Maps.
 
-### What makes it different from the dozen existing swipe apps
-
-| | |
-|---|---|
-| **Legible learning** | Every card shows *why* — "Because you love Isaan · Spicy · Cheap eats" — and a **Palate** screen with confidence bars. You watch it get smarter. |
-| **Palate mood** | Two vectors per user: slow **core** taste + a decaying **recent** vector. Recs blend them, so the deck tracks what you've been into lately. |
-| **Consensus decks (async, min-regret)** | Pick any friends → a shared deck ranked by **maximin**: the person who'd like it least still likes it. No live room, no "everyone online at once". |
-| **Stretch pick + streak** | One deliberate out-of-comfort card per deck, with an adventure streak. Discovery, not just matching. |
-
-Market research + full design: [`docs/DESIGN.md`](docs/DESIGN.md) and the
-published Artifact.
+**No accounts, no server-side database.** The backend is a thin stateless proxy
+over Google Places. Right-swipes are saved **on the device** (AsyncStorage /
+localStorage) so they're there when you come back — nothing syncs, nothing leaves
+the phone.
 
 ## Stack
 
-- **Mobile:** React Native (Expo, TypeScript), `gesture-handler` + `reanimated`, Zustand
-- **API:** Go 1.23 — chi, pgx. One binary = HTTP API + nightly Places sync worker
-- **DB:** PostgreSQL 16 + PostGIS (nearby) + pgvector (taste ranking)
-- **Place data:** Google Places (New), synced per city into our `restaurants` table so swiping never triggers a billed call
-- **Auth:** native Sign in with Apple (`expo-apple-authentication`) + Google (`expo-auth-session`) → the provider's signed ID token → verified server-side against the provider JWKS → our short-lived JWTs. Apple uses a hashed-nonce round-trip. `DEV_LOGIN=true` gives a no-OAuth bypass for local work.
+- **Mobile:** React Native (Expo, TypeScript) — `gesture-handler` + `reanimated`
+  for the deck, `zustand` for session state, Bricolage Grotesque + Hanken Grotesk
+- **Backend:** Go 1.23 — chi. One binary, three `GET` routes, an in-memory TTL
+  cache. No persistence.
+- **Data:** Google Places API (New) — Nearby Search + Place Photos. Without a key
+  the backend serves a curated set of real restaurants around the
+  Chula – Samyan – Siam Square area so the app is demoable offline.
 
 ## Run it locally
 
 ```bash
+# backend — runs in MOCK mode with no key
 cd backend
-cp .env.example .env                 # DEV_LOGIN=true is set; no OAuth needed
-make up                              # postgres(+postgis+pgvector) + redis
-make migrate                         # needs `migrate` CLI (golang-migrate)
-make seed                            # ~80 fake Bangkok restaurants (no API key needed)
-make run                             # API on :8080
+cp .env.example .env
+make run                     # proxy on :8080
 
+# mobile
 cd ../mobile
+cp .env.example .env.local   # EXPO_PUBLIC_API_URL=http://localhost:8080
 npm install
-npx expo start                       # tap "dev: skip sign-in" on the login screen
+npx expo start               # press a / i, or w for web
 ```
 
-Point the app at a non-localhost API with `EXPO_PUBLIC_API_URL`.
+To use live data, put a **Places API (New)** key in `backend/.env`
+(`GOOGLE_PLACES_API_KEY=...`) and restart — the app switches to real nearby
+results and photos everywhere, no code change.
+
+## Deploy
+
+Backend: `backend/Dockerfile` → any container host (Cloud Run / Fly / Render) or a
+plain binary. Set `GOOGLE_PLACES_API_KEY` and `CORS_ORIGIN`. Mobile: `expo export
+--platform web` for the web build, EAS Build for native.
+
+Full runbook is in `docs/DEPLOYMENT.md` (kept local, not in this repo).
+
+## Backend API
+
+```
+GET /healthz                                        -> {ok, mock}
+GET /nearby?lat&lng&radius&categories=thai,cafe&openNow=true
+                                                    -> {cards: [Card]}
+GET /photo?name=places/<id>/photos/<id>&w=900       -> image bytes (key stays server-side)
+```
+
+`Card`: `id, name, address, priceLevel (0-4), rating, ratingCount, photoUrls[],
+cuisines[], distanceM, openNow, openKnown, mapsUri`. Nearby results are cached
+per rounded location + filter for `CACHE_TTL` (default 10m) to keep Places calls
+down.
+
+Config (`backend/.env`): `HTTP_ADDR`, `CACHE_TTL`, `CORS_ORIGIN`,
+`GOOGLE_PLACES_API_KEY`, `MOCK`.
 
 ## Layout
 
 ```
 backend/
-  cmd/api/            entrypoint (API + sync worker)
-  cmd/seed/           fake restaurants for local dev
+  cmd/api/            entrypoint
   internal/
-    taste/            64-dim taste space, dual-vector model, compatibility,
-                      consensus (maximin), stretch scoring, feature extraction
-    deck/             solo deck ranker (fit + diversity + stretch) & consensus ranker
-    db/               pgx queries: users, restaurants, swipes, friends, sessions
-    auth/             Apple/Google JWKS verification + our JWT issuer
-    places/           Google Places (New) client + sync worker
-    api/              chi router + handlers
-  migrations/         0001 schema, 0002 differentiator columns/tables
+    config/           env config
+    places/           Places (New) client + normalisation + curated mock data
+    cache/            in-memory TTL cache
+    httpapi/          chi router: /healthz, /nearby, /photo
 mobile/
-  src/api/            typed client with token refresh
-  src/store/          zustand auth store
-  src/screens/        Deck, Friends, Palate, Consensus, SignIn
-  src/components/      SwipeCard, MatchModal
+  src/
+    api/client.ts     getNearby()
+    store/session.ts  filters + liked pile, persisted on-device (zustand persist)
+    lib/              categories, formatting
+    components/       SwipeCard, ActionBar, TopBar, FilterSheet, LikedSheet
+    screens/          DeckScreen (the whole app)
+    theme/tokens.ts   "Fresh Market" palette + fonts
 ```
 
-## Tests
+## Category filters
 
-```bash
-cd backend && go test ./...
-```
+The app's filter keys (`src/lib/categories.ts`) map to Places (New) primary types
+in `backend/internal/places/places.go` (`categoryTypes`). Unknown keys fall back
+to a plain `restaurant` search.
 
-`internal/taste` covers the learning rule, core-vs-recent decay, compatibility
-blending, and the maximin consensus guarantee. `internal/deck` covers ranking
-order and one-stretch-per-deck.
+## Design
 
-## API sketch
-
-```
-POST /v1/auth/exchange {provider,idToken,nonce?,fullName?}  -> {tokens,user}
-POST /v1/auth/dev {handle}                     -> {tokens,user}   (DEV_LOGIN only)
-GET  /v1/me                                    -> palate, mood, streak
-GET  /v1/deck?lat&lng&radiusM                  -> [card] with reasons + stretch
-POST /v1/swipes {restaurantId,direction,...}   -> {ok, adventureStreak?, match?}
-GET  /v1/friends                               -> [friend] with cached compatibility
-POST /v1/friends/requests {handle}
-POST /v1/friends/{id}/accept
-GET  /v1/friends/{id}/compatibility            -> score + bothLove/neitherLikes
-POST /v1/consensus {friendIds,lat,lng}         -> maximin-ranked group deck
-POST /v1/sessions {mode,lat,lng,quorum}        -> live or async room
-GET  /v1/sessions/{id}/state                   -> members + match (poll this)
-```
-
-## OAuth setup (for real sign-in, not `DEV_LOGIN`)
-
-**Google** — in one Google Cloud project create three OAuth client IDs (iOS,
-Android, Web). Put all three in the backend's `GOOGLE_CLIENT_IDS` and in
-`mobile/.env.local` (`EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`). Add the **reversed** iOS
-client id to `mobile/app.json` → `ios.infoPlist.CFBundleURLTypes`.
-
-**Apple** — enable "Sign in with Apple" on the App ID `app.eatrai.mobile` in the
-Apple Developer portal. Set backend `APPLE_CLIENT_IDS=app.eatrai.mobile`. No
-client secret is needed for native iOS (the identity token is verified by
-signature); a Services ID + key is only required if you add web/Android Apple
-sign-in later.
-
-The app falls back to Google-only on Android and non-iOS-13 devices.
-
-## Not built yet
-
-Live-session WebSocket push (state is poll-based for now), reservations/delivery
-deep links, and a learned two-tower recommender to replace the centroid once
-there's a swipe corpus. See the roadmap in the design doc.
+Approved direction and screen mockups live in the "EatRai Redesign" canvas
+(published Artifact). Working `.dc.html` source is not committed.

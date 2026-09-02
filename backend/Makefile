@@ -1,29 +1,24 @@
-include .env
+-include .env
 export
 
-.PHONY: up down migrate migrate-down run seed test tidy
+.PHONY: run build test tidy docker docker-run
 
-up:
-	docker compose up -d --build
-
-down:
-	docker compose down
-
-migrate:
-	migrate -path migrations -database "$(DATABASE_URL)" up
-
-migrate-down:
-	migrate -path migrations -database "$(DATABASE_URL)" down 1
-
+# Runs in mock mode unless GOOGLE_PLACES_API_KEY is set in .env
 run:
 	go run ./cmd/api
 
-# fake restaurants around a point so you can swipe without a Places key
-seed:
-	go run ./cmd/seed -lat 13.7440 -lng 100.5330 -n 80
+build:
+	go build -trimpath -ldflags="-s -w" -o bin/eatrai ./cmd/api
 
 test:
 	go test ./...
 
 tidy:
 	go mod tidy && gofmt -w ./cmd ./internal
+
+docker:
+	docker build -t eatrai:local .
+
+# Run the image with your .env
+docker-run: docker
+	docker run --rm -p 8080:8080 --env-file .env eatrai:local

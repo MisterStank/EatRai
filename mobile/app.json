@@ -5,32 +5,20 @@
     "scheme": "eatrai",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
-    "splash": { "backgroundColor": "#161311" },
+    "userInterfaceStyle": "light",
+    "splash": { "backgroundColor": "#FBF7F0" },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.eatrai.mobile",
-      "usesAppleSignIn": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "EatRai uses your location to show restaurants near you.",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "REPLACE_WITH_REVERSED_GOOGLE_IOS_CLIENT_ID"
-            ]
-          }
-        ]
+        "NSLocationWhenInUseUsageDescription": "EatRai uses your location to show restaurants near you."
       }
     },
     "android": {
       "package": "app.eatrai.mobile",
-      "permissions": ["ACCESS_FINE_LOCATION"]
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
-    "plugins": [
-      "expo-location",
-      "expo-secure-store",
-      "expo-apple-authentication"
-    ],
+    "plugins": ["expo-location", "expo-font"],
     "extra": {}
   }
 }

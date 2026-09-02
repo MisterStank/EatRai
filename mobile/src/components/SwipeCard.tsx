@@ -3,174 +3,186 @@ import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
+  Extrapolation,
   runOnJS,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { Feather } from "@expo/vector-icons";
 import { color, font, radius, space } from "../theme/tokens";
-import type { Card, Direction } from "../api/client";
+import { fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import type { Card } from "../api/client";
+
+export type SwipeDir = "like" | "nope";
 
 const { width } = Dimensions.get("window");
-const THRESHOLD = width * 0.26;
+const THRESHOLD = width * 0.28;
 
 export function SwipeCard({
   card,
-  isTop,
+  depth,
+  dragX,
   onResolve,
+  onOpen,
 }: {
   card: Card;
-  isTop: boolean;
-  onResolve: (dir: Direction) => void;
+  depth: number; // 0 = top / interactive
+  dragX?: SharedValue<number>;
+  onResolve: (dir: SwipeDir) => void;
+  onOpen: () => void;
 }) {
+  const isTop = depth === 0;
   const x = useSharedValue(0);
   const y = useSharedValue(0);
 
+  const tap = Gesture.Tap()
+    .enabled(isTop)
+    .maxDistance(10)
+    .onEnd((_e, success) => {
+      if (success) runOnJS(onOpen)();
+    });
+
   const pan = Gesture.Pan()
+    .enabled(isTop)
     .onChange((e) => {
       x.value = e.translationX;
       y.value = e.translationY;
+      if (dragX) dragX.value = e.translationX;
     })
     .onEnd(() => {
       if (x.value > THRESHOLD) {
-        x.value = withSpring(width * 1.5);
-        runOnJS(onResolve)(1);
+        x.value = withSpring(width * 1.6, { damping: 18 });
+        runOnJS(onResolve)("like");
       } else if (x.value < -THRESHOLD) {
-        x.value = withSpring(-width * 1.5);
-        runOnJS(onResolve)(-1);
-      } else if (y.value < -THRESHOLD) {
-        y.value = withSpring(-width * 1.5);
-        runOnJS(onResolve)(2);
+        x.value = withSpring(-width * 1.6, { damping: 18 });
+        runOnJS(onResolve)("nope");
       } else {
         x.value = withSpring(0);
         y.value = withSpring(0);
+        if (dragX) dragX.value = withSpring(0);
       }
     });
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x.value },
-      { translateY: y.value },
-      { rotate: `${interpolate(x.value, [-width, width], [-11, 11])}deg` },
-    ],
+  const animStyle = useAnimatedStyle(() => {
+    if (!isTop) {
+      return { transform: [{ scale: 1 - depth * 0.05 }, { translateY: depth * 14 }] };
+    }
+    return {
+      transform: [
+        { translateX: x.value },
+        { translateY: y.value * 0.32 },
+        { rotate: `${interpolate(x.value, [-width, width], [-9, 9])}deg` },
+      ],
+    };
+  });
+
+  const likeStamp = useAnimatedStyle(() => ({
+    opacity: interpolate(x.value, [40, THRESHOLD], [0, 1], Extrapolation.CLAMP),
   }));
-  const likeOp = useAnimatedStyle(() => ({ opacity: interpolate(x.value, [0, THRESHOLD], [0, 1]) }));
-  const passOp = useAnimatedStyle(() => ({ opacity: interpolate(x.value, [-THRESHOLD, 0], [1, 0]) }));
-  const superOp = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [-THRESHOLD, 0], [1, 0]) }));
+  const nopeStamp = useAnimatedStyle(() => ({
+    opacity: interpolate(x.value, [-THRESHOLD, -40], [1, 0], Extrapolation.CLAMP),
+  }));
 
   const body = (
-    <Animated.View style={[styles.card, card.isStretch && styles.stretchCard, isTop && cardStyle]}>
-      <Image source={{ uri: card.photoUrls[0] }} style={styles.photo} />
+    <Animated.View style={[styles.card, animStyle]}>
+      <LinearGradient
+        colors={["#F4AE63", "#E7743A", "#BE4127"]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {card.photoUrls?.[0] ? (
+        <Image source={{ uri: card.photoUrls[0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : null}
 
-      <Animated.View style={[styles.stamp, styles.like, likeOp]}>
-        <Text style={styles.stampText}>KIN!</Text>
-      </Animated.View>
-      <Animated.View style={[styles.stamp, styles.pass, passOp]}>
-        <Text style={styles.stampText}>NOPE</Text>
-      </Animated.View>
-      <Animated.View style={[styles.stamp, styles.superLike, superOp]}>
-        <Text style={styles.stampText}>★ MUST</Text>
-      </Animated.View>
+      <LinearGradient
+        colors={["transparent", "rgba(20,14,7,0.35)", "rgba(20,14,7,0.9)"]}
+        locations={[0, 0.45, 1]}
+        style={styles.scrim}
+      />
 
-      {card.isStretch && (
-        <View style={styles.stretchBadge}>
-          <Text style={styles.stretchBadgeText}>STRETCH PICK · outside your usual</Text>
-        </View>
-      )}
+      {isTop ? (
+        <>
+          <Animated.View style={[styles.stamp, styles.stampLike, likeStamp]}>
+            <Text style={styles.stampLikeText}>LIKE</Text>
+          </Animated.View>
+          <Animated.View style={[styles.stamp, styles.stampNope, nopeStamp]}>
+            <Text style={styles.stampNopeText}>NOPE</Text>
+          </Animated.View>
+        </>
+      ) : null}
 
-      <View style={styles.meta}>
+      <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>
           {card.name}
         </Text>
-        <Text style={styles.sub}>
-          {"$".repeat(Math.max(1, card.priceLevel))} · {card.cuisines.slice(0, 2).join(", ") || "Restaurant"} ·{" "}
-          {fmtDist(card.distanceM)}
+        <Text style={styles.meta} numberOfLines={1}>
+          {[fmtPrice(card.priceLevel), fmtCuisines(card.cuisines)].filter(Boolean).join("  ·  ")}
         </Text>
-
-        {!card.isStretch && card.matchScore > 0 && (
-          <Text style={styles.match}>
-            {Math.round(card.matchScore)}% your taste
-          </Text>
-        )}
-
-        {card.reasons && card.reasons.length > 0 && (
-          <View style={styles.reasonRow}>
-            {card.reasons.slice(0, 3).map((rsn) => (
-              <View key={rsn} style={styles.chip}>
-                <Text style={styles.chipText}>{rsn}</Text>
-              </View>
-            ))}
+        <View style={styles.chips}>
+          <View style={styles.chip}>
+            <Text style={styles.chipText}>{fmtDistance(card.distanceM)}</Text>
           </View>
-        )}
-
-        {card.friendsLiked && card.friendsLiked.length > 0 && (
-          <Text style={styles.friends}>
-            ♥ {card.friendsLiked.slice(0, 2).join(", ")}
-            {card.friendsLiked.length > 2 ? ` +${card.friendsLiked.length - 2}` : ""} liked this
-          </Text>
-        )}
+          {card.rating > 0 ? (
+            <View style={styles.chip}>
+              <Feather name="star" size={11} color={color.gold} />
+              <Text style={styles.chipText}>{fmtRating(card.rating)}</Text>
+            </View>
+          ) : null}
+          {card.openKnown ? (
+            <View style={styles.chip}>
+              <View style={[styles.dot, { backgroundColor: card.openNow ? color.likeBright : color.gold }]} />
+              <Text style={styles.chipText}>{card.openNow ? "Open now" : "Closed"}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </Animated.View>
   );
 
-  return isTop ? <GestureDetector gesture={pan}>{body}</GestureDetector> : body;
-}
-
-function fmtDist(m: number) {
-  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
+  if (!isTop) return body;
+  return <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>{body}</GestureDetector>;
 }
 
 const styles = StyleSheet.create({
   card: {
-    position: "absolute",
-    width: width - space(10),
-    height: "84%",
+    ...StyleSheet.absoluteFillObject,
     borderRadius: radius.card,
-    backgroundColor: color.surface,
+    backgroundColor: color.surfaceAlt,
     overflow: "hidden",
   },
-  stretchCard: { borderWidth: 2, borderColor: color.stretch },
-  photo: { ...StyleSheet.absoluteFillObject, resizeMode: "cover" },
-  meta: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: space(5),
-    backgroundColor: "rgba(0,0,0,0.58)",
-  },
-  name: { color: color.text, fontSize: 27, fontFamily: font.display },
-  sub: { color: color.textDim, marginTop: space(1), fontFamily: font.body },
-  match: { color: color.gold, marginTop: space(2), fontFamily: font.label, fontWeight: "600" },
-  reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: space(1.5), marginTop: space(2.5) },
+  scrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: "64%" },
+  info: { position: "absolute", left: 0, right: 0, bottom: 0, padding: space(5.5) },
+  name: { color: color.onPhoto, fontFamily: font.display, fontSize: 27, letterSpacing: -0.5 },
+  meta: { color: "rgba(255,255,255,0.87)", fontFamily: font.body, fontSize: 13.5, marginTop: space(2.25) },
+  chips: { flexDirection: "row", gap: space(2), marginTop: space(3.5) },
   chip: {
-    backgroundColor: "rgba(255,255,255,0.14)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(1.25),
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.26)",
     borderRadius: radius.pill,
-    paddingHorizontal: space(2.5),
-    paddingVertical: space(1),
+    paddingHorizontal: space(2.75),
+    paddingVertical: space(1.5),
   },
-  chipText: { color: color.text, fontSize: 12, fontFamily: font.label },
-  friends: { color: color.yes, marginTop: space(2), fontSize: 13, fontFamily: font.body },
-  stretchBadge: {
-    position: "absolute",
-    top: space(4),
-    alignSelf: "center",
-    backgroundColor: color.stretch,
-    borderRadius: radius.pill,
-    paddingHorizontal: space(3),
-    paddingVertical: space(1),
-  },
-  stretchBadgeText: { color: color.text, fontSize: 11, fontFamily: font.label, letterSpacing: 0.5 },
+  chipText: { color: color.onPhoto, fontFamily: font.bodySemi, fontSize: 12.5 },
+  dot: { width: 7, height: 7, borderRadius: 999 },
   stamp: {
     position: "absolute",
-    top: space(9),
-    paddingHorizontal: space(3),
-    paddingVertical: space(1),
+    top: space(7),
     borderWidth: 3,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
+    paddingHorizontal: space(4),
+    paddingVertical: space(1.5),
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
-  like: { left: space(5), borderColor: color.yes, transform: [{ rotate: "-13deg" }] },
-  pass: { right: space(5), borderColor: color.primary, transform: [{ rotate: "13deg" }] },
-  superLike: { alignSelf: "center", borderColor: color.gold },
-  stampText: { fontSize: 26, fontFamily: font.label, fontWeight: "800", color: color.text },
+  stampLike: { left: space(6), transform: [{ rotate: "-12deg" }], borderColor: color.likeBright },
+  stampNope: { right: space(6), transform: [{ rotate: "12deg" }], borderColor: color.nope },
+  stampLikeText: { color: color.likeBright, fontFamily: font.display, fontSize: 30, letterSpacing: 3 },
+  stampNopeText: { color: color.nope, fontFamily: font.display, fontSize: 30, letterSpacing: 3 },
 });

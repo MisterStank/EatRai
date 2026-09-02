@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
-	"github.com/chakkrit/eatrai/internal/api"
-	"github.com/chakkrit/eatrai/internal/auth"
+	"github.com/chakkrit/eatrai/internal/cache"
 	"github.com/chakkrit/eatrai/internal/config"
-	"github.com/chakkrit/eatrai/internal/db"
+	"github.com/chakkrit/eatrai/internal/httpapi"
 	"github.com/chakkrit/eatrai/internal/places"
 )
 
@@ -27,49 +27,24 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	database, err := db.Open(ctx, cfg.DatabaseURL)
-	if err != nil {
-		log.Error("db open", "err", err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	if err := database.SyncDimensions(ctx); err != nil {
-		log.Error("sync taste dimensions", "err", err)
-		os.Exit(1)
-	}
-
-	// Places sync worker (no-op without an API key).
-	worker := &places.Worker{
-		DB:       database,
-		Client:   places.NewClient(cfg.GooglePlacesAPIKey),
-		Points:   cfg.SyncPoints(),
-		Interval: cfg.SyncInterval,
-		Log:      log,
-	}
-	go worker.Run(ctx)
-
-	srv := &api.Server{
-		DB: database,
-		Issuer: auth.Issuer{
-			Secret:     []byte(cfg.JWTSecret),
-			AccessTTL:  cfg.AccessTTL,
-			RefreshTTL: cfg.RefreshTTL,
-		},
-		Verifier: auth.NewVerifier(cfg.OAuthAudiences()),
-		Log:      log,
-		DevLogin: cfg.DevLogin,
+	srv := &httpapi.Server{
+		Places:     places.NewClient(cfg.GooglePlacesAPIKey),
+		Cache:      cache.New(cfg.CacheTTL),
+		Mock:       cfg.Mock,
+		CORSOrigin: cfg.CORSOrigin,
+		Log:        log,
 	}
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           srv.Router(),
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      15 * time.Second,
+		WriteTimeout:      20 * time.Second,
 	}
+
 	go func() {
-		log.Info("EatRai API listening", "addr", cfg.HTTPAddr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Info("EatRai proxy listening", "addr", cfg.HTTPAddr, "mock", cfg.Mock)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("serve", "err", err)
 			os.Exit(1)
 		}
