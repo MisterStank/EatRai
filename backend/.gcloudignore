@@ -1,0 +1,9 @@
+# Files not uploaded to Cloud Build. (gcloud falls back to .gitignore if this
+# file is absent; keeping it explicit.)
+.git
+.gitignore
+.env
+.env.*
+bin/
+*.log
+README.md

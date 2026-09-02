@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -10,7 +11,9 @@ import (
 // caches responses in memory. No database, no auth, no secrets beyond the
 // Places key.
 type Config struct {
-	HTTPAddr string `envconfig:"HTTP_ADDR" default:":8080"`
+	// HTTP_ADDR wins if set; otherwise PORT (Cloud Run / most PaaS) is used;
+	// otherwise :8080.
+	HTTPAddr string `envconfig:"HTTP_ADDR"`
 
 	// GooglePlacesAPIKey enables live data. Empty (or Mock=true) serves
 	// generated Bangkok restaurants so the app runs with no key.
@@ -30,6 +33,13 @@ func Load() (Config, error) {
 	var c Config
 	if err := envconfig.Process("", &c); err != nil {
 		return c, err
+	}
+	if c.HTTPAddr == "" {
+		if p := os.Getenv("PORT"); p != "" {
+			c.HTTPAddr = ":" + p
+		} else {
+			c.HTTPAddr = ":8080"
+		}
 	}
 	if c.GooglePlacesAPIKey == "" {
 		c.Mock = true

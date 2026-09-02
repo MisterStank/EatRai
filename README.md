@@ -88,8 +88,3 @@ mobile/
 The app's filter keys (`src/lib/categories.ts`) map to Places (New) primary types
 in `backend/internal/places/places.go` (`categoryTypes`). Unknown keys fall back
 to a plain `restaurant` search.
-
-## Design
-
-Approved direction and screen mockups live in the "EatRai Redesign" canvas
-(published Artifact). Working `.dc.html` source is not committed.
