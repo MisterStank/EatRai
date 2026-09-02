@@ -12,3 +12,6 @@ mobile/*.log
 
 # misc
 .DS_Store
+
+# local-only working docs — not published to GitHub
+docs/
