@@ -1,6 +1,7 @@
 import "react-native-gesture-handler";
 import React from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
+import * as Linking from "expo-linking";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -28,7 +29,9 @@ export default function App() {
     Anuphan_700Bold,
   });
 
-  const shared = parseSharedList();
+  // Web reads window.location synchronously; native resolves the deep link URL.
+  const nativeURL = Linking.useURL();
+  const shared = parseSharedList(Platform.OS === "web" ? undefined : nativeURL);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.paper }}>

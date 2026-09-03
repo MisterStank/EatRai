@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { getPlace, type Place } from "../api/client";
+import { getList, type Card } from "../api/client";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { color, font, radius, space } from "../theme/tokens";
 import { fmtCuisines, fmtPrice, fmtRating } from "../lib/format";
@@ -14,22 +14,20 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
   const hydrated = useSession((s) => s.hydrated);
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detail, setDetail] = useState<Place | null>(null);
+  const [detail, setDetail] = useState<Card | null>(null);
+  const truncated = ids.length > 25;
 
   useEffect(() => {
     if (!hydrated) return;
-    let alive = true;
+    const ctrl = new AbortController();
     setLoading(true);
-    Promise.all(ids.slice(0, 25).map((id) => getPlace(id, { lang }).catch(() => null))).then((res) => {
-      if (!alive) return;
-      setPlaces(res.filter(Boolean) as Place[]);
-      setLoading(false);
-    });
-    return () => {
-      alive = false;
-    };
+    getList(ids, { lang, signal: ctrl.signal })
+      .then((res) => setPlaces(res))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    return () => ctrl.abort();
   }, [hydrated, lang]);
 
   const goHome = () => {
@@ -41,7 +39,10 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
       <View style={styles.header}>
         <Text style={styles.logo}>กินไร?</Text>
         <Text style={styles.kicker}>{t("sharedWithYou")}</Text>
-        <Text style={styles.count}>{t("nPlaces", { n: loading ? ids.length : places.length })}</Text>
+        <Text style={styles.count}>
+          {t("nPlaces", { n: loading ? Math.min(ids.length, 25) : places.length })}
+        </Text>
+        {truncated ? <Text style={styles.note}>{t("listTruncated")}</Text> : null}
       </View>
 
       {loading ? (
@@ -96,6 +97,7 @@ const styles = StyleSheet.create({
   logo: { fontFamily: font.display, fontSize: 22, color: color.accent, letterSpacing: -0.3 },
   kicker: { fontFamily: font.bodySemi, fontSize: 14, color: color.inkSoft, marginTop: space(3) },
   count: { fontFamily: font.display, fontSize: 30, color: color.ink, letterSpacing: -0.6, marginTop: space(0.5) },
+  note: { fontFamily: font.body, fontSize: 12.5, color: color.inkFaint, marginTop: space(1) },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   list: { flex: 1, paddingHorizontal: space(4.5), marginTop: space(2) },
   row: {

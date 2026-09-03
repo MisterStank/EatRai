@@ -19,14 +19,35 @@ const en = {
   // deck states
   needLocation: "Location permission is needed to find restaurants near you.",
   locationFailed: "Couldn't get your location. Check location services and try again.",
+  locationTimedOut: "Getting your location is taking a while. Try again, or search an area.",
   loadFailed: "Couldn't load restaurants.",
+  tooMany: "Too many requests just now — wait a minute and try again.",
   noneWithFilters: "Nothing here with those filters — widen the radius or clear a category.",
   allDone: "That's everyone nearby.",
   allDoneNoLikes: "That's everyone nearby — nothing caught your eye.",
   tryAgain: "Try again",
-  startOver: "Start over",
+  startOver: "Widen the search",
   seeYourN: "See your {n}",
   nLiked: "{n} liked",
+
+  // decide
+  decideForMe: "Decide for me",
+  decideKicker: "Eat at",
+  decideFromLikes: "picked from your saved places",
+  decideFromNearby: "picked from what's nearby",
+  decideAgain: "Not this one",
+  decideDetails: "See details",
+
+  // location picker
+  changeLocation: "Change location",
+  searchArea: "Search a neighbourhood or place",
+  useMyLocation: "Use my current location",
+  noAreaMatch: "Couldn't find that. Try another name.",
+  search: "Search",
+
+  // hint
+  swipeHint: "Swipe to choose. Tap the photo to see more, tap the name for details.",
+  gotIt: "Got it",
 
   // card / status
   open: "Open now",
@@ -60,6 +81,7 @@ const en = {
   sharedWithYou: "Shared with you",
   openEatRai: "Open EatRai",
   loadingList: "Loading…",
+  listTruncated: "Showing the first 25 places.",
 
   // a11y
   a11yUndo: "Undo",
@@ -68,6 +90,10 @@ const en = {
   a11yDirections: "Directions",
   a11yFilters: "Filters",
   a11yLanguage: "Switch language",
+  a11yDecide: "Decide for me",
+  a11yPhotoNext: "Next photo",
+  a11yPhotoPrev: "Previous photo",
+  a11yRestaurantCard: "{name}. Swipe right to save, left to pass.",
 };
 
 type Key = keyof typeof en;
@@ -87,14 +113,32 @@ const th: Record<Key, string> = {
 
   needLocation: "ต้องเปิดสิทธิ์ตำแหน่งเพื่อค้นหาร้านอาหารใกล้คุณ",
   locationFailed: "ไม่สามารถระบุตำแหน่งได้ ตรวจสอบบริการตำแหน่งแล้วลองใหม่",
+  locationTimedOut: "ระบุตำแหน่งใช้เวลานาน ลองใหม่ หรือค้นหาย่านที่ต้องการ",
   loadFailed: "โหลดร้านอาหารไม่สำเร็จ",
+  tooMany: "มีคำขอมากเกินไป รอสักครู่แล้วลองใหม่",
   noneWithFilters: "ไม่พบร้านตามตัวกรองนี้ — ลองเพิ่มระยะทางหรือเอาหมวดหมู่ออก",
   allDone: "หมดแล้วสำหรับแถวนี้",
   allDoneNoLikes: "หมดแล้วสำหรับแถวนี้ — ยังไม่เจอร้านที่ถูกใจ",
   tryAgain: "ลองอีกครั้ง",
-  startOver: "เริ่มใหม่",
+  startOver: "ขยายพื้นที่ค้นหา",
   seeYourN: "ดู {n} ร้านที่ชอบ",
   nLiked: "ชอบ {n} ร้าน",
+
+  decideForMe: "เลือกให้เลย",
+  decideKicker: "ไปกินที่",
+  decideFromLikes: "สุ่มจากร้านที่คุณบันทึกไว้",
+  decideFromNearby: "สุ่มจากร้านแถวนี้",
+  decideAgain: "เอาร้านอื่น",
+  decideDetails: "ดูรายละเอียด",
+
+  changeLocation: "เปลี่ยนตำแหน่ง",
+  searchArea: "ค้นหาย่านหรือสถานที่",
+  useMyLocation: "ใช้ตำแหน่งปัจจุบัน",
+  noAreaMatch: "ไม่พบสถานที่นั้น ลองชื่ออื่น",
+  search: "ค้นหา",
+
+  swipeHint: "ปัดเพื่อเลือก แตะรูปเพื่อดูเพิ่ม แตะชื่อเพื่อดูรายละเอียด",
+  gotIt: "เข้าใจแล้ว",
 
   open: "เปิดอยู่",
   closed: "ปิดอยู่",
@@ -124,6 +168,7 @@ const th: Record<Key, string> = {
   sharedWithYou: "มีคนแชร์ให้คุณ",
   openEatRai: "เปิด EatRai",
   loadingList: "กำลังโหลด…",
+  listTruncated: "แสดง 25 ร้านแรก",
 
   a11yUndo: "ย้อนกลับ",
   a11yPass: "ผ่าน",
@@ -131,6 +176,10 @@ const th: Record<Key, string> = {
   a11yDirections: "เส้นทาง",
   a11yFilters: "ตัวกรอง",
   a11yLanguage: "เปลี่ยนภาษา",
+  a11yDecide: "เลือกให้เลย",
+  a11yPhotoNext: "รูปถัดไป",
+  a11yPhotoPrev: "รูปก่อนหน้า",
+  a11yRestaurantCard: "{name} ปัดขวาเพื่อบันทึก ปัดซ้ายเพื่อผ่าน",
 };
 
 const dict: Record<Lang, Record<Key, string>> = { en, th };

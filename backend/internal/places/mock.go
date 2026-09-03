@@ -150,6 +150,29 @@ func MockPlace(id, lang string, lat, lng float64) Place {
 	return Place{Card: Card{ID: id, Name: "Unknown place", Cuisines: []string{"Restaurant"}}}
 }
 
+// MockList resolves shared-list ids back to cards (lite view).
+func MockList(ids []string, lang string) []Card {
+	out := make([]Card, 0, len(ids))
+	for _, id := range ids {
+		want := strings.TrimPrefix(id, "mock_")
+		for _, s := range mockSpots {
+			if slug(s.name) == want {
+				out = append(out, s.card(0, lang))
+				break
+			}
+		}
+	}
+	return out
+}
+
+// MockGeocode fakes "change location" — everything resolves to Samyan, Bangkok.
+func MockGeocode(query string) (lat, lng float64, label string) {
+	if strings.TrimSpace(query) == "" {
+		query = "Samyan"
+	}
+	return 13.7326, 100.5289, query
+}
+
 func intersects(a, b []string) bool {
 	set := map[string]bool{}
 	for _, x := range a {

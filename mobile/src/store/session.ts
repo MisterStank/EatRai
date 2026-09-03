@@ -7,12 +7,15 @@ import type { Card, Lang } from "../api/client";
 // native, localStorage on web) — no account, nothing leaves the phone, lost if
 // the app is deleted or the list is cleared.
 
+export const DEFAULT_RADIUS_M = 1000;
+
 type SessionState = {
   lang: Lang;
   categories: string[];
   radiusM: number;
   openNow: boolean;
   liked: Card[];
+  hintSeen: boolean;
   hydrated: boolean;
 
   setLang: (lang: Lang) => void;
@@ -20,6 +23,8 @@ type SessionState = {
   addLiked: (c: Card) => void;
   removeLiked: (id: string) => void;
   clearLiked: () => void;
+  markHintSeen: () => void;
+  markHydrated: () => void;
 };
 
 export const useSession = create<SessionState>()(
@@ -27,9 +32,10 @@ export const useSession = create<SessionState>()(
     (set) => ({
       lang: "en",
       categories: [],
-      radiusM: 1000,
+      radiusM: DEFAULT_RADIUS_M,
       openNow: false,
       liked: [],
+      hintSeen: false,
       hydrated: false,
 
       setLang: (lang) => set({ lang }),
@@ -38,6 +44,8 @@ export const useSession = create<SessionState>()(
         set((s) => (s.liked.some((x) => x.id === c.id) ? s : { liked: [...s.liked, c] })),
       removeLiked: (id) => set((s) => ({ liked: s.liked.filter((x) => x.id !== id) })),
       clearLiked: () => set({ liked: [] }),
+      markHintSeen: () => set({ hintSeen: true }),
+      markHydrated: () => set((s) => (s.hydrated ? s : { hydrated: true })),
     }),
     {
       name: "eatrai-session-v1",
@@ -48,13 +56,20 @@ export const useSession = create<SessionState>()(
         radiusM: s.radiusM,
         openNow: s.openNow,
         liked: s.liked,
+        hintSeen: s.hintSeen,
       }),
       onRehydrateStorage: () => () => {
-        useSession.setState({ hydrated: true });
+        useSession.getState().markHydrated();
       },
     },
   ),
 );
 
-export const filterCount = (s: Pick<SessionState, "categories" | "openNow">): number =>
-  s.categories.length + (s.openNow ? 1 : 0);
+// Don't let a stuck or blocked storage layer (private mode, disabled storage)
+// trap the app on the loading screen — proceed with defaults after a moment.
+setTimeout(() => useSession.getState().markHydrated(), 2500);
+
+export const filterCount = (
+  s: Pick<SessionState, "categories" | "openNow" | "radiusM">,
+): number =>
+  s.categories.length + (s.openNow ? 1 : 0) + (s.radiusM !== DEFAULT_RADIUS_M ? 1 : 0);

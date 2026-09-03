@@ -33,6 +33,12 @@ export type NearbyOpts = {
   signal?: AbortSignal;
 };
 
+async function readError(res: Response, fallback: string): Promise<Error> {
+  const body = await res.json().catch(() => ({}) as any);
+  if (res.status === 429) return new Error("TOO_MANY");
+  return new Error(body.error ?? `${fallback} (${res.status})`);
+}
+
 export async function getNearby(lat: number, lng: number, opts: NearbyOpts = {}): Promise<Card[]> {
   const p = new URLSearchParams({ lat: String(lat), lng: String(lng) });
   if (opts.radiusM) p.set("radius", String(opts.radiusM));
@@ -41,10 +47,7 @@ export async function getNearby(lat: number, lng: number, opts: NearbyOpts = {})
   if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
 
   const res = await fetch(`${BASE}/nearby?${p.toString()}`, { signal: opts.signal });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Couldn't load restaurants (${res.status})`);
-  }
+  if (!res.ok) throw await readError(res, "Couldn't load restaurants");
   const data = (await res.json()) as { cards: Card[] };
   return data.cards ?? [];
 }
@@ -60,9 +63,35 @@ export async function getPlace(
     p.set("lng", String(opts.lng));
   }
   const res = await fetch(`${BASE}/place?${p.toString()}`, { signal: opts.signal });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Couldn't load that place (${res.status})`);
-  }
+  if (!res.ok) throw await readError(res, "Couldn't load that place");
   return (await res.json()) as Place;
+}
+
+// getList resolves a shared list of place IDs in one request (server-side
+// batched, cheaper field mask). Returns Cards, not full Places.
+export async function getList(
+  ids: string[],
+  opts: { lang?: Lang; signal?: AbortSignal } = {},
+): Promise<Card[]> {
+  if (!ids.length) return [];
+  const p = new URLSearchParams({ ids: ids.slice(0, 25).join(",") });
+  if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+  const res = await fetch(`${BASE}/list?${p.toString()}`, { signal: opts.signal });
+  if (!res.ok) throw await readError(res, "Couldn't load that list");
+  const data = (await res.json()) as { places: Card[] };
+  return data.places ?? [];
+}
+
+export type GeoResult = { lat: number; lng: number; label: string };
+
+// geocode resolves a free-text area ("Thonglor", "Siam Paragon") to a point.
+export async function geocode(
+  q: string,
+  opts: { lang?: Lang; signal?: AbortSignal } = {},
+): Promise<GeoResult> {
+  const p = new URLSearchParams({ q });
+  if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+  const res = await fetch(`${BASE}/geocode?${p.toString()}`, { signal: opts.signal });
+  if (!res.ok) throw await readError(res, "Couldn't find that place");
+  return (await res.json()) as GeoResult;
 }

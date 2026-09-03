@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -24,9 +25,22 @@ type Config struct {
 	// reused before we call Places again.
 	CacheTTL time.Duration `envconfig:"CACHE_TTL" default:"10m"`
 
-	// CORSOrigin is the allowed browser origin for the Expo web build. "*" in
-	// dev; set to the real origin in production.
+	// CORSOrigin is the allowed browser origin(s) for the web build, comma
+	// separated. "*" in dev; set to the real origin(s) in production. The same
+	// list gates non-browser abuse of the paid endpoints (see RequireOrigin).
 	CORSOrigin string `envconfig:"CORS_ORIGIN" default:"*"`
+
+	// RequireOrigin, when true, rejects requests to the paid data endpoints
+	// whose Origin/Referer is not in the CORS_ORIGIN list. Requests with no
+	// Origin and no Referer still pass (native apps, health checks) — the rate
+	// limiter is the backstop for those. Ignored when CORS_ORIGIN is "*".
+	RequireOrigin bool `envconfig:"REQUIRE_ORIGIN" default:"true"`
+
+	// RateLimitRPM caps requests per client IP per minute on the data
+	// endpoints. 0 disables it.
+	RateLimitRPM int `envconfig:"RATE_LIMIT_RPM" default:"60"`
+
+	AllowedOrigins []string `ignored:"true"`
 }
 
 func Load() (Config, error) {
@@ -43,6 +57,14 @@ func Load() (Config, error) {
 	}
 	if c.GooglePlacesAPIKey == "" {
 		c.Mock = true
+	}
+	for _, o := range strings.Split(c.CORSOrigin, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			c.AllowedOrigins = append(c.AllowedOrigins, o)
+		}
+	}
+	if len(c.AllowedOrigins) == 0 {
+		c.AllowedOrigins = []string{"*"}
 	}
 	return c, nil
 }

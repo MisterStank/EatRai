@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	searchURL  = "https://places.googleapis.com/v1/places:searchNearby"
-	detailURL  = "https://places.googleapis.com/v1/places/"
-	photoMedia = "https://places.googleapis.com/v1/%s/media"
-	searchMask = "places.id,places.displayName,places.formattedAddress,places.location," +
+	searchURL     = "https://places.googleapis.com/v1/places:searchNearby"
+	searchTextURL = "https://places.googleapis.com/v1/places:searchText"
+	detailURL     = "https://places.googleapis.com/v1/places/"
+	photoMedia    = "https://places.googleapis.com/v1/%s/media"
+	searchMask    = "places.id,places.displayName,places.formattedAddress,places.location," +
 		"places.priceLevel,places.rating,places.userRatingCount,places.types," +
 		"places.primaryTypeDisplayName,places.photos,places.currentOpeningHours.openNow," +
 		"places.googleMapsUri"
@@ -30,6 +31,11 @@ const (
 		"currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions," +
 		"regularOpeningHours.weekdayDescriptions,internationalPhoneNumber," +
 		"nationalPhoneNumber,websiteUri,editorialSummary"
+	// liteDetailMask is the Pro-tier subset used to resolve a shared list — no
+	// phone/website/summary (which push Place Details into the pricier tier).
+	liteDetailMask = "id,displayName,formattedAddress,location,priceLevel,rating," +
+		"userRatingCount,types,primaryTypeDisplayName,photos,googleMapsUri," +
+		"currentOpeningHours.openNow"
 
 	nearbyPhotos = 5
 	detailPhotos = 10
@@ -138,38 +144,13 @@ func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
 	return cards, nil
 }
 
-// GetPlace fetches Place Details for one place ID. lat/lng are optional — when
-// given, the result carries a distance.
+// GetPlace fetches full Place Details for one place ID. lat/lng are optional —
+// when given, the result carries a distance.
 func (c *Client) GetPlace(ctx context.Context, id, lang, photoBase string, lat, lng float64) (Place, error) {
-	u := detailURL + url.PathEscape(id)
-	if lc := langCode(lang); lc != "" {
-		u += "?languageCode=" + lc
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	p, err := c.placeDetails(ctx, id, lang, detailMask)
 	if err != nil {
 		return Place{}, err
 	}
-	req.Header.Set("X-Goog-Api-Key", c.APIKey)
-	req.Header.Set("X-Goog-FieldMask", detailMask)
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return Place{}, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		var e struct {
-			Error struct{ Message string } `json:"error"`
-		}
-		json.NewDecoder(resp.Body).Decode(&e)
-		return Place{}, fmt.Errorf("place %d: %s", resp.StatusCode, e.Error.Message)
-	}
-
-	var p apiPlace
-	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
-		return Place{}, err
-	}
-
 	card := p.toCard(lat, lng, photoBase, detailPhotos, langCode(lang))
 	hours := p.CurrentOpeningHours.WeekdayDescriptions
 	if len(hours) == 0 {
@@ -182,6 +163,111 @@ func (c *Client) GetPlace(ctx context.Context, id, lang, photoBase string, lat, 
 		Summary:      p.EditorialSummary.Text,
 		WeekdayHours: hours,
 	}, nil
+}
+
+// GetPlaceLite resolves one place ID to a Card only, on the cheaper field-mask
+// tier. Used to render a shared list without paying for full details on every
+// row.
+func (c *Client) GetPlaceLite(ctx context.Context, id, lang, photoBase string) (Card, error) {
+	p, err := c.placeDetails(ctx, id, lang, liteDetailMask)
+	if err != nil {
+		return Card{}, err
+	}
+	return p.toCard(0, 0, photoBase, nearbyPhotos, langCode(lang)), nil
+}
+
+func (c *Client) placeDetails(ctx context.Context, id, lang, mask string) (apiPlace, error) {
+	u := detailURL + url.PathEscape(id)
+	if lc := langCode(lang); lc != "" {
+		u += "?languageCode=" + lc
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return apiPlace{}, err
+	}
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", mask)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return apiPlace{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error struct{ Message string } `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		return apiPlace{}, fmt.Errorf("place %d: %s", resp.StatusCode, e.Error.Message)
+	}
+	var p apiPlace
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		return apiPlace{}, err
+	}
+	return p, nil
+}
+
+// SearchText runs a free-text query ("ก๋วยเตี๋ยว", "อาหารอีสาน", …) biased to the
+// same circle as a nearby search. Used for the app's categories that Google's
+// place-type vocabulary can't express. Returns normalised cards.
+func (c *Client) SearchText(ctx context.Context, textQuery string, q Query) ([]Card, error) {
+	body := map[string]any{
+		"textQuery":      textQuery,
+		"maxResultCount": 20,
+		"locationBias": map[string]any{
+			"circle": map[string]any{
+				"center": map[string]float64{"latitude": q.Lat, "longitude": q.Lng},
+				"radius": clampRadius(q.RadiusM),
+			},
+		},
+	}
+	if q.OpenNow {
+		body["openNow"] = true
+	}
+	if lc := langCode(q.Lang); lc != "" {
+		body["languageCode"] = lc
+	}
+	reqBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchTextURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", searchMask)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error struct{ Message string } `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		return nil, fmt.Errorf("searchText %d: %s", resp.StatusCode, e.Error.Message)
+	}
+
+	var out struct {
+		Places []apiPlace `json:"places"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	cards := make([]Card, 0, len(out.Places))
+	for _, p := range out.Places {
+		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, langCode(q.Lang))
+		if int(card.DistanceM) > int(clampRadius(q.RadiusM)) {
+			continue
+		}
+		if q.OpenNow && card.OpenKnown && !card.OpenNow {
+			continue
+		}
+		cards = append(cards, card)
+	}
+	return cards, nil
 }
 
 // FetchPhoto streams the bytes for a Places photo resource name
@@ -208,6 +294,48 @@ func (c *Client) FetchPhoto(ctx context.Context, name string, maxWidth int) (io.
 		ct = "image/jpeg"
 	}
 	return resp.Body, ct, nil
+}
+
+// Geocode resolves a free-text area ("Thonglor", "Siam Paragon") to a
+// coordinate and a display label, via a lightweight text search. Powers the
+// app's manual "change location".
+func (c *Client) Geocode(ctx context.Context, query, lang string) (lat, lng float64, label string, err error) {
+	body := map[string]any{"textQuery": query, "maxResultCount": 1}
+	if lc := langCode(lang); lc != "" {
+		body["languageCode"] = lc
+	}
+	reqBody, _ := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchTextURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return 0, 0, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", "places.location,places.displayName,places.formattedAddress")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return 0, 0, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, 0, "", fmt.Errorf("geocode %d", resp.StatusCode)
+	}
+	var out struct {
+		Places []apiPlace `json:"places"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return 0, 0, "", err
+	}
+	if len(out.Places) == 0 {
+		return 0, 0, "", fmt.Errorf("geocode: no match")
+	}
+	p := out.Places[0]
+	label = p.DisplayName.Text
+	if label == "" {
+		label = p.FormattedAddress
+	}
+	return p.Location.Latitude, p.Location.Longitude, label, nil
 }
 
 // --- Places (New) response shapes -------------------------------------------
@@ -290,13 +418,10 @@ func firstNonEmpty(vals ...string) string {
 // types. Unknown keys fall back to a plain "restaurant" search.
 var categoryTypes = map[string][]string{
 	"thai":       {"thai_restaurant"},
-	"isaan":      {"thai_restaurant"},
-	"noodles":    {"ramen_restaurant", "vietnamese_restaurant"},
-	"street":     {"fast_food_restaurant"},
 	"seafood":    {"seafood_restaurant"},
 	"japanese":   {"japanese_restaurant", "sushi_restaurant", "ramen_restaurant"},
 	"cafe":       {"cafe", "coffee_shop"},
-	"bar":        {"bar"},
+	"bar":        {"bar", "pub"},
 	"bbq":        {"barbecue_restaurant"},
 	"dessert":    {"dessert_restaurant", "ice_cream_shop", "bakery"},
 	"vegetarian": {"vegetarian_restaurant", "vegan_restaurant"},
@@ -306,6 +431,33 @@ var categoryTypes = map[string][]string{
 	"italian":    {"italian_restaurant"},
 	"pizza":      {"pizza_restaurant"},
 	"burgers":    {"hamburger_restaurant"},
+}
+
+// textCategoryQueries covers the filters Google's place-type vocabulary can't
+// express — these run as free-text searches instead of type-filtered nearby
+// searches. Query text is per language.
+var textCategoryQueries = map[string]map[string]string{
+	"isaan":   {"en": "Isaan / Northeastern Thai food", "th": "อาหารอีสาน"},
+	"noodles": {"en": "noodle shop", "th": "ก๋วยเตี๋ยว"},
+	"street":  {"en": "street food", "th": "สตรีทฟู้ด อาหารริมทาง"},
+}
+
+// SplitCategories separates friendly keys into type-filterable ones and
+// free-text ones, and returns the localized text queries for the latter.
+func SplitCategories(cats []string, lang string) (typeCats []string, textQueries []string) {
+	l := "en"
+	if langCode(lang) == "th" {
+		l = "th"
+	}
+	for _, k := range cats {
+		k = strings.ToLower(strings.TrimSpace(k))
+		if q, ok := textCategoryQueries[k]; ok {
+			textQueries = append(textQueries, q[l])
+			continue
+		}
+		typeCats = append(typeCats, k)
+	}
+	return typeCats, textQueries
 }
 
 func includedTypes(categories []string) []string {

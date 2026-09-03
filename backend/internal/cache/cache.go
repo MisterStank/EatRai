@@ -36,9 +36,18 @@ func (c *TTL) Get(key string) (any, bool) {
 }
 
 func (c *TTL) Set(key string, val any) {
+	c.SetTTL(key, val, c.ttl)
+}
+
+// SetTTL stores val under key for a caller-chosen lifetime — used where the
+// default TTL is wrong (e.g. "open now" results, which go stale sooner).
+func (c *TTL) SetTTL(key string, val any, ttl time.Duration) {
+	if ttl <= 0 {
+		ttl = c.ttl
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.m[key] = entry{val: val, expires: time.Now().Add(c.ttl)}
+	c.m[key] = entry{val: val, expires: time.Now().Add(ttl)}
 	// opportunistic sweep so the map can't grow forever
 	if len(c.m) > 512 {
 		now := time.Now()

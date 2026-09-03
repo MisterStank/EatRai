@@ -1,15 +1,21 @@
-// Package httpapi is the whole service: three GET routes over a Places client
-// with an in-memory cache.
+// Package httpapi is the whole service: a handful of GET routes over a Places
+// client with an in-memory cache, an IP rate limiter, and an origin gate on the
+// endpoints that cost money.
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -17,21 +23,28 @@ import (
 
 	"github.com/chakkrit/eatrai/internal/cache"
 	"github.com/chakkrit/eatrai/internal/places"
+	"github.com/chakkrit/eatrai/internal/ratelimit"
 )
 
 type Server struct {
-	Places     *places.Client
-	Cache      *cache.TTL
-	Mock       bool
-	CORSOrigin string
-	Log        *slog.Logger
+	Places         *places.Client
+	Cache          *cache.TTL
+	Limiter        *ratelimit.Limiter
+	Mock           bool
+	AllowedOrigins []string // CORS + origin gate; ["*"] disables the gate
+	RequireOrigin  bool
+	Log            *slog.Logger
 }
+
+// openNowTTL keeps "open now" results fresh — a place that just closed shouldn't
+// linger in the cache for the full default TTL.
+const openNowTTL = 3 * time.Minute
 
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{s.CORSOrigin},
+		AllowedOrigins:   s.AllowedOrigins,
 		AllowedMethods:   []string{http.MethodGet, http.MethodOptions},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: false,
@@ -45,11 +58,90 @@ func (s *Server) Router() http.Handler {
 	}
 	r.Get("/status", health)
 	r.Get("/healthcheck", health)
-	r.Get("/nearby", s.handleNearby)
-	r.Get("/place", s.handlePlace)
+
+	// The paid endpoints sit behind the rate limiter and the origin gate.
+	r.Group(func(r chi.Router) {
+		r.Use(s.rateLimit)
+		r.Use(s.checkOrigin)
+		r.Get("/nearby", s.handleNearby)
+		r.Get("/place", s.handlePlace)
+		r.Get("/list", s.handleList)
+		r.Get("/geocode", s.handleGeocode)
+	})
+
 	r.Get("/photo", s.handlePhoto)
 	return r
 }
+
+// --- middleware ----------------------------------------------------------
+
+func (s *Server) rateLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Limiter != nil && !s.Limiter.Allow(clientIP(r)) {
+			w.Header().Set("Retry-After", "60")
+			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "slow down — too many requests"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) checkOrigin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.originAllowed(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		s.Log.Warn("blocked cross-origin request", "origin", r.Header.Get("Origin"), "referer", r.Header.Get("Referer"), "ip", clientIP(r))
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "not allowed from this origin"})
+	})
+}
+
+func (s *Server) originAllowed(r *http.Request) bool {
+	if !s.RequireOrigin {
+		return true
+	}
+	for _, o := range s.AllowedOrigins {
+		if o == "*" {
+			return true
+		}
+	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		if ref := r.Header.Get("Referer"); ref != "" {
+			if u, err := url.Parse(ref); err == nil {
+				origin = u.Scheme + "://" + u.Host
+			}
+		}
+	}
+	// No Origin and no Referer: a non-browser client (native app, monitor,
+	// curl). The rate limiter is the backstop for those — don't hard-block.
+	if origin == "" {
+		return true
+	}
+	for _, o := range s.AllowedOrigins {
+		if strings.EqualFold(o, origin) {
+			return true
+		}
+	}
+	return false
+}
+
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if i := strings.IndexByte(xff, ','); i > 0 {
+			return strings.TrimSpace(xff[:i])
+		}
+		return strings.TrimSpace(xff)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// --- handlers ----------------------------------------------------------
 
 func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -86,6 +178,7 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 
 	key := cacheKey(lat, lng, radius, categories, openNow) + "|" + lang
 	if cached, ok := s.Cache.Get(key); ok {
+		w.Header().Set("Cache-Control", "public, max-age=120")
 		writeJSON(w, http.StatusOK, map[string]any{"cards": cached, "cached": true})
 		return
 	}
@@ -94,15 +187,51 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	if s.Mock {
 		cards = places.MockNearby(query)
 	} else {
-		cards, err1 = s.Places.SearchNearby(r.Context(), query)
-		if err1 != nil {
-			s.Log.Error("places search", "err", err1)
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
-			return
+		typeCats, textQueries := places.SplitCategories(categories, lang)
+		runNearby := len(categories) == 0 || len(typeCats) > 0
+
+		seen := map[string]bool{}
+		if runNearby {
+			nq := query
+			nq.Categories = typeCats
+			got, err := s.Places.SearchNearby(r.Context(), nq)
+			if err != nil {
+				s.Log.Error("places search", "err", err)
+				writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
+				return
+			}
+			for _, c := range got {
+				if !seen[c.ID] {
+					seen[c.ID] = true
+					cards = append(cards, c)
+				}
+			}
 		}
+		for _, tq := range textQueries {
+			got, err := s.Places.SearchText(r.Context(), tq, query)
+			if err != nil {
+				s.Log.Error("places text search", "err", err, "q", tq)
+				continue
+			}
+			for _, c := range got {
+				if !seen[c.ID] {
+					seen[c.ID] = true
+					cards = append(cards, c)
+				}
+			}
+		}
+		sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
 	}
 
-	s.Cache.Set(key, cards)
+	if cards == nil {
+		cards = []places.Card{}
+	}
+	ttl := time.Duration(0)
+	if openNow {
+		ttl = openNowTTL
+	}
+	s.Cache.SetTTL(key, cards, ttl)
+	w.Header().Set("Cache-Control", "public, max-age=120")
 	writeJSON(w, http.StatusOK, map[string]any{"cards": cards})
 }
 
@@ -140,6 +269,106 @@ func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
 
 	s.Cache.Set(key, place)
 	writeJSON(w, http.StatusOK, place)
+}
+
+// handleList resolves a shared list (?ids=a,b,c) in one round trip, on the
+// cheaper Place Details field-mask tier, with a per-id cache so re-opening a
+// link is free. Bounded concurrency keeps a big list from fanning out wide.
+func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.URL.Query().Get("ids"))
+	if raw == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "ids is required"})
+		return
+	}
+	lang := normLang(r.URL.Query().Get("lang"))
+
+	var ids []string
+	seen := map[string]bool{}
+	for _, id := range strings.Split(raw, ",") {
+		if id = strings.TrimSpace(id); id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+		if len(ids) == 25 {
+			break
+		}
+	}
+
+	if s.Mock {
+		writeJSON(w, http.StatusOK, map[string]any{"places": places.MockList(ids, lang)})
+		return
+	}
+
+	base := publicBase(r)
+	out := make([]places.Card, len(ids))
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	for i, id := range ids {
+		key := "lite|" + id + "|" + lang
+		if cached, ok := s.Cache.Get(key); ok {
+			if c, ok := cached.(places.Card); ok {
+				out[i] = c
+				continue
+			}
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int, id, key string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+			c, err := s.Places.GetPlaceLite(ctx, id, lang, base)
+			if err != nil {
+				s.Log.Warn("list resolve", "id", id, "err", err)
+				return
+			}
+			s.Cache.SetTTL(key, c, time.Hour)
+			out[i] = c
+		}(i, id, key)
+	}
+	wg.Wait()
+
+	cards := make([]places.Card, 0, len(out))
+	for _, c := range out {
+		if c.ID != "" {
+			cards = append(cards, c)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"places": cards})
+}
+
+func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(q) < 2 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "q is required"})
+		return
+	}
+	lang := normLang(r.URL.Query().Get("lang"))
+
+	key := "geo|" + strings.ToLower(q) + "|" + lang
+	if cached, ok := s.Cache.Get(key); ok {
+		writeJSON(w, http.StatusOK, cached)
+		return
+	}
+
+	var (
+		lat, lng float64
+		label    string
+	)
+	if s.Mock {
+		lat, lng, label = places.MockGeocode(q)
+	} else {
+		var err error
+		lat, lng, label, err = s.Places.Geocode(r.Context(), q, lang)
+		if err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "couldn't find that place"})
+			return
+		}
+	}
+	res := map[string]any{"lat": lat, "lng": lng, "label": label}
+	s.Cache.SetTTL(key, res, time.Hour)
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {

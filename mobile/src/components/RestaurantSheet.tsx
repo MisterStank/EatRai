@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -17,14 +16,8 @@ import { color, font, radius, space } from "../theme/tokens";
 import { fmtCount, fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
-
-const { width } = Dimensions.get("window");
-const IMG_H = Math.round(width * 0.92);
-
-function todayIndex(): number {
-  // weekdayHours from Places starts Monday; JS getDay() is Sunday=0
-  return (new Date().getDay() + 6) % 7;
-}
+import { isTodayLine, todayHours } from "../lib/hours";
+import { openExternal } from "../lib/linking";
 
 export function RestaurantSheet({
   visible,
@@ -39,6 +32,8 @@ export function RestaurantSheet({
 }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
+  const { width } = useWindowDimensions();
+  const IMG_H = Math.round(Math.min(width, 520) * 0.92);
   const [place, setPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
@@ -59,10 +54,9 @@ export function RestaurantSheet({
   const view = place ?? (card as Place | null);
   const photos = useMemo(() => view?.photoUrls?.filter(Boolean) ?? [], [view]);
 
-  const open = (url?: string) => url && Linking.openURL(url).catch(() => {});
+  const open = (url?: string) => openExternal(url);
 
-  const hoursToday =
-    place?.weekdayHours && place.weekdayHours.length === 7 ? place.weekdayHours[todayIndex()] : "";
+  const hoursToday = todayHours(place?.weekdayHours, lang);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -138,7 +132,7 @@ export function RestaurantSheet({
                     <Text style={styles.rowValue}>{hoursToday || place.weekdayHours[0]}</Text>
                     {hoursOpen
                       ? place.weekdayHours.map((h, i) => (
-                          <Text key={i} style={[styles.rowValue, i === todayIndex() && styles.hoursToday]}>
+                          <Text key={i} style={[styles.rowValue, isTodayLine(h, lang) && styles.hoursToday]}>
                             {h}
                           </Text>
                         ))

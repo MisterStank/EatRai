@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
@@ -7,6 +7,7 @@ import Animated, {
   runOnJS,
   type SharedValue,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
@@ -19,9 +20,6 @@ import { useSession } from "../store/session";
 import type { Card } from "../api/client";
 
 export type SwipeDir = "like" | "nope";
-
-const { width } = Dimensions.get("window");
-const THRESHOLD = width * 0.28;
 
 export function SwipeCard({
   card,
@@ -38,6 +36,9 @@ export function SwipeCard({
 }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
+  const { width } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
+  const threshold = width * 0.28;
   const isTop = depth === 0;
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -46,6 +47,7 @@ export function SwipeCard({
   const [pi, setPi] = useState(0);
   const [cardH, setCardH] = useState(0);
   const idx = Math.min(pi, photos.length - 1);
+  const multi = photos.length > 1;
 
   const step = (dir: 1 | -1) => setPi((n) => (n + dir + photos.length) % photos.length);
 
@@ -56,7 +58,7 @@ export function SwipeCard({
       if (!success) return;
       if (cardH > 0 && e.y > cardH * 0.72) {
         runOnJS(onDetail)();
-      } else if (photos.length > 1) {
+      } else if (multi) {
         runOnJS(step)(e.x < width * 0.5 ? -1 : 1);
       } else {
         runOnJS(onDetail)();
@@ -71,10 +73,10 @@ export function SwipeCard({
       if (dragX) dragX.value = e.translationX;
     })
     .onEnd(() => {
-      if (x.value > THRESHOLD) {
+      if (x.value > threshold) {
         x.value = withSpring(width * 1.6, { damping: 18 });
         runOnJS(onResolve)("like");
-      } else if (x.value < -THRESHOLD) {
+      } else if (x.value < -threshold) {
         x.value = withSpring(-width * 1.6, { damping: 18 });
         runOnJS(onResolve)("nope");
       } else {
@@ -86,28 +88,31 @@ export function SwipeCard({
 
   const animStyle = useAnimatedStyle(() => {
     if (!isTop) {
+      if (reduceMotion) return { transform: [{ translateY: depth * 14 }] };
       return { transform: [{ scale: 1 - depth * 0.05 }, { translateY: depth * 14 }] };
     }
     return {
       transform: [
         { translateX: x.value },
         { translateY: y.value * 0.32 },
-        { rotate: `${interpolate(x.value, [-width, width], [-9, 9])}deg` },
+        { rotate: reduceMotion ? "0deg" : `${interpolate(x.value, [-width, width], [-9, 9])}deg` },
       ],
     };
   });
 
   const likeStamp = useAnimatedStyle(() => ({
-    opacity: interpolate(x.value, [40, THRESHOLD], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(x.value, [40, threshold], [0, 1], Extrapolation.CLAMP),
   }));
   const nopeStamp = useAnimatedStyle(() => ({
-    opacity: interpolate(x.value, [-THRESHOLD, -40], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(x.value, [-threshold, -40], [1, 0], Extrapolation.CLAMP),
   }));
 
   const body = (
     <Animated.View
       style={[styles.card, animStyle]}
       onLayout={(e) => setCardH(e.nativeEvent.layout.height)}
+      accessible={isTop}
+      accessibilityLabel={isTop ? t("a11yRestaurantCard", { name: card.name }) : undefined}
     >
       <LinearGradient
         colors={["#F4AE63", "#E7743A", "#BE4127"]}
@@ -123,12 +128,23 @@ export function SwipeCard({
         />
       ) : null}
 
-      {isTop && photos.length > 1 ? (
+      {isTop && multi ? (
         <View style={styles.segments}>
           {photos.map((_, i) => (
             <View key={i} style={[styles.segment, i === idx && styles.segmentOn]} />
           ))}
         </View>
+      ) : null}
+
+      {isTop && multi ? (
+        <>
+          <View style={[styles.navHint, styles.navLeft]} pointerEvents="none">
+            <Feather name="chevron-left" size={20} color="rgba(255,255,255,0.9)" />
+          </View>
+          <View style={[styles.navHint, styles.navRight]} pointerEvents="none">
+            <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.9)" />
+          </View>
+        </>
       ) : null}
 
       <LinearGradient
@@ -200,19 +216,40 @@ const styles = StyleSheet.create({
   },
   segment: { flex: 1, height: 3, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.32)" },
   segmentOn: { backgroundColor: "rgba(255,255,255,0.95)" },
+  navHint: {
+    position: "absolute",
+    top: "42%",
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.28)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navLeft: { left: space(2.5) },
+  navRight: { right: space(2.5) },
   scrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: "64%" },
   info: { position: "absolute", left: 0, right: 0, bottom: 0, padding: space(5.5) },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space(1.5) },
-  name: { color: color.onPhoto, fontFamily: font.display, fontSize: 26, letterSpacing: -0.3, flexShrink: 1 },
+  name: {
+    color: color.onPhoto,
+    fontFamily: font.display,
+    fontSize: 26,
+    letterSpacing: -0.3,
+    flexShrink: 1,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
   meta: { color: "rgba(255,255,255,0.87)", fontFamily: font.body, fontSize: 13.5, marginTop: space(2.25) },
   chips: { flexDirection: "row", gap: space(2), marginTop: space(3.5) },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: space(1.25),
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(0,0,0,0.32)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.26)",
+    borderColor: "rgba(255,255,255,0.28)",
     borderRadius: radius.pill,
     paddingHorizontal: space(2.75),
     paddingVertical: space(1.5),

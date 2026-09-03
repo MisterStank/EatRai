@@ -13,6 +13,7 @@ import (
 	"github.com/chakkrit/eatrai/internal/config"
 	"github.com/chakkrit/eatrai/internal/httpapi"
 	"github.com/chakkrit/eatrai/internal/places"
+	"github.com/chakkrit/eatrai/internal/ratelimit"
 )
 
 func main() {
@@ -28,18 +29,22 @@ func main() {
 	defer stop()
 
 	srv := &httpapi.Server{
-		Places:     places.NewClient(cfg.GooglePlacesAPIKey),
-		Cache:      cache.New(cfg.CacheTTL),
-		Mock:       cfg.Mock,
-		CORSOrigin: cfg.CORSOrigin,
-		Log:        log,
+		Places:         places.NewClient(cfg.GooglePlacesAPIKey),
+		Cache:          cache.New(cfg.CacheTTL),
+		Limiter:        ratelimit.New(cfg.RateLimitRPM, time.Minute),
+		Mock:           cfg.Mock,
+		AllowedOrigins: cfg.AllowedOrigins,
+		RequireOrigin:  cfg.RequireOrigin,
+		Log:            log,
 	}
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           srv.Router(),
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      20 * time.Second,
+		// Generous enough to stream a full-size photo passthrough without the
+		// write deadline cutting the response.
+		WriteTimeout: 45 * time.Second,
 	}
 
 	go func() {
