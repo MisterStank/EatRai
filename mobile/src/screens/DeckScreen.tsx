@@ -16,7 +16,7 @@ import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { RestaurantSheet } from "../components/RestaurantSheet";
-import { LocationSheet } from "../components/LocationSheet";
+import { MapLocationScreen } from "../components/MapLocationScreen";
 import { DecideSheet } from "../components/DecideSheet";
 import { openExternal } from "../lib/linking";
 import { color, font, radius, space } from "../theme/tokens";
@@ -350,10 +350,11 @@ export function DeckScreen() {
         onClear={clearLiked}
         onClose={() => setShowLiked(false)}
       />
-      <LocationSheet
+      <MapLocationScreen
         visible={showLocation}
+        initial={coords}
         onClose={() => setShowLocation(false)}
-        onPick={pickLocation}
+        onConfirm={pickLocation}
         onUseMyLocation={locate}
       />
       <DecideSheet

@@ -20,6 +20,7 @@ import (
 
 const (
 	searchTextURL = "https://places.googleapis.com/v1/places:searchText"
+	geocodeAPIURL = "https://maps.googleapis.com/maps/api/geocode/json"
 	detailURL     = "https://places.googleapis.com/v1/places/"
 	photoMedia    = "https://places.googleapis.com/v1/%s/media"
 	searchMask    = "places.id,places.displayName,places.formattedAddress,places.location," +
@@ -347,6 +348,64 @@ func (c *Client) Geocode(ctx context.Context, query, lang string) (lat, lng floa
 		label = p.FormattedAddress
 	}
 	return p.Location.Latitude, p.Location.Longitude, label, nil
+}
+
+// Reverse turns a coordinate into a short area label ("Bang Rak") via the
+// classic Geocoding API. The caller caches aggressively — this is a separate
+// billed SKU.
+func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (string, error) {
+	u := fmt.Sprintf("%s?latlng=%f,%f&key=%s&result_type=%s",
+		geocodeAPIURL, lat, lng, url.QueryEscape(c.APIKey),
+		url.QueryEscape("sublocality_level_1|neighborhood|locality|administrative_area_level_1"))
+	if lc := langCode(lang); lc != "" {
+		u += "&language=" + lc
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var out struct {
+		Status  string `json:"status"`
+		Results []struct {
+			FormattedAddress  string `json:"formatted_address"`
+			AddressComponents []struct {
+				LongName string   `json:"long_name"`
+				Types    []string `json:"types"`
+			} `json:"address_components"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", err
+	}
+	if out.Status != "OK" || len(out.Results) == 0 {
+		return "", fmt.Errorf("reverse geocode: %s", out.Status)
+	}
+
+	want := []string{"sublocality_level_1", "neighborhood", "locality", "administrative_area_level_1"}
+	for _, pref := range want {
+		for _, r := range out.Results {
+			for _, comp := range r.AddressComponents {
+				for _, ty := range comp.Types {
+					if ty == pref && comp.LongName != "" {
+						return comp.LongName, nil
+					}
+				}
+			}
+		}
+	}
+	if fa := out.Results[0].FormattedAddress; fa != "" {
+		if i := strings.IndexByte(fa, ','); i > 0 {
+			return strings.TrimSpace(fa[:i]), nil
+		}
+		return fa, nil
+	}
+	return "", fmt.Errorf("reverse geocode: no label")
 }
 
 // --- Places (New) response shapes -------------------------------------------

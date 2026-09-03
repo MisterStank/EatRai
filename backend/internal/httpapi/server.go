@@ -68,6 +68,7 @@ func (s *Server) Router() http.Handler {
 		r.Get("/place", s.handlePlace)
 		r.Get("/list", s.handleList)
 		r.Get("/geocode", s.handleGeocode)
+		r.Get("/reverse", s.handleReverse)
 	})
 
 	r.Get("/photo", s.handlePhoto)
@@ -349,6 +350,38 @@ func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	res := map[string]any{"lat": lat, "lng": lng, "label": label}
+	s.Cache.SetTTL(key, res, time.Hour)
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) handleReverse(w http.ResponseWriter, r *http.Request) {
+	lat, err1 := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+	lng, err2 := strconv.ParseFloat(r.URL.Query().Get("lng"), 64)
+	if err1 != nil || err2 != nil || lat < -90 || lat > 90 || lng < -180 || lng > 180 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lat and lng are required"})
+		return
+	}
+	lang := normLang(r.URL.Query().Get("lang"))
+
+	key := fmt.Sprintf("rev|%.3f,%.3f|%s", round3(lat), round3(lng), lang)
+	if cached, ok := s.Cache.Get(key); ok {
+		writeJSON(w, http.StatusOK, cached)
+		return
+	}
+
+	var label string
+	if s.Mock {
+		label = places.MockReverse(lat, lng)
+	} else {
+		var err error
+		label, err = s.Places.Reverse(r.Context(), lat, lng, lang)
+		if err != nil {
+			s.Log.Warn("reverse geocode", "err", err)
+			writeJSON(w, http.StatusOK, map[string]string{"label": ""}) // soft-fail: the pin still works
+			return
+		}
+	}
+	res := map[string]string{"label": label}
 	s.Cache.SetTTL(key, res, time.Hour)
 	writeJSON(w, http.StatusOK, res)
 }

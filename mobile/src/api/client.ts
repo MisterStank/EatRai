@@ -106,3 +106,17 @@ export async function geocode(
   if (!res.ok) throw await readError(res, "Couldn't find that place");
   return (await res.json()) as GeoResult;
 }
+
+// reverseGeocode turns a map-pin coordinate into a short area label. Soft-fails
+// to an empty label — the pin still works without one.
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  opts: { lang?: Lang; signal?: AbortSignal } = {},
+): Promise<{ label: string }> {
+  const p = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+  const res = await fetch(`${BASE}/reverse?${p.toString()}`, { signal: opts.signal });
+  if (!res.ok) return { label: "" };
+  return (await res.json()) as { label: string };
+}

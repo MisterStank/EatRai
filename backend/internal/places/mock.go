@@ -206,6 +206,11 @@ func MockGeocode(query string) (lat, lng float64, label string) {
 	return 13.7326, 100.5289, query
 }
 
+// MockReverse fakes the pin's area label.
+func MockReverse(lat, lng float64) string {
+	return "Samyan"
+}
+
 func intersects(a, b []string) bool {
 	set := map[string]bool{}
 	for _, x := range a {

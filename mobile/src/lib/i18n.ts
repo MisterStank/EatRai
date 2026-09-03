@@ -51,6 +51,9 @@ const en = {
   useMyLocation: "Use my current location",
   noAreaMatch: "Couldn't find that. Try another name.",
   search: "Search",
+  confirmLocation: "Search here",
+  pinnedNear: "Near {area}",
+  pinnedHere: "This spot",
 
   // hint
   swipeHint: "Swipe to choose. Tap the photo to see more, tap the name for details.",
@@ -150,6 +153,9 @@ const th: Record<Key, string> = {
   useMyLocation: "ใช้ตำแหน่งปัจจุบัน",
   noAreaMatch: "ไม่พบสถานที่นั้น ลองชื่ออื่น",
   search: "ค้นหา",
+  confirmLocation: "ค้นหาที่นี่",
+  pinnedNear: "ใกล้ {area}",
+  pinnedHere: "จุดนี้",
 
   swipeHint: "ปัดเพื่อเลือก แตะรูปเพื่อดูเพิ่ม แตะชื่อเพื่อดูรายละเอียด",
   gotIt: "เข้าใจแล้ว",
