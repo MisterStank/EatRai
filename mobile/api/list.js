@@ -38,6 +38,7 @@ export default async function handler(req, res) {
   let desc = ids.length
     ? `${ids.length} place${ids.length === 1 ? "" : "s"} someone picked for you.`
     : "Swipe to pick where to eat.";
+  let image = "";
 
   try {
     if (API && ids.length) {
@@ -45,17 +46,27 @@ export default async function handler(req, res) {
         headers: { origin: base },
       });
       if (r.ok) {
-        const names = ((await r.json()).places || []).map((p) => p.name).filter(Boolean);
+        const list = (await r.json()).places || [];
+        const names = list.map((p) => p.name).filter(Boolean);
         if (names.length) {
           desc =
             names.slice(0, 5).join(" · ") +
             (names.length > 5 ? ` and ${names.length - 5} more` : "");
         }
+        const withPhoto = list.find((p) => p.photoUrls && p.photoUrls[0]);
+        if (withPhoto) image = withPhoto.photoUrls[0];
       }
     }
   } catch {
-    /* keep the generic description */
+    /* keep the generic description, no image */
   }
+
+  const card = image ? "summary_large_image" : "summary";
+  const imageTags = image
+    ? `
+    <meta property="og:image" content="${esc(image)}" />
+    <meta name="twitter:image" content="${esc(image)}" />`
+    : "";
 
   const tags = `
     <meta name="description" content="${esc(desc)}" />
@@ -63,9 +74,9 @@ export default async function handler(req, res) {
     <meta property="og:site_name" content="EatRai" />
     <meta property="og:title" content="${esc(title)}" />
     <meta property="og:description" content="${esc(desc)}" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="${card}" />
     <meta name="twitter:title" content="${esc(title)}" />
-    <meta name="twitter:description" content="${esc(desc)}" />
+    <meta name="twitter:description" content="${esc(desc)}" />${imageTags}
   `;
   html = html.replace("</head>", `${tags}</head>`);
 
