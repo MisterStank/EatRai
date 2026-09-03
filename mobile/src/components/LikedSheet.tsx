@@ -8,6 +8,7 @@ import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { buildShareURL } from "../lib/sharing";
 import { RestaurantSheet } from "./RestaurantSheet";
+import { DecideSheet } from "./DecideSheet";
 import type { Card } from "../api/client";
 
 export function LikedSheet({
@@ -27,6 +28,7 @@ export function LikedSheet({
   const lang = useSession((s) => s.lang);
   const [detail, setDetail] = useState<Card | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showDecide, setShowDecide] = useState(false);
 
   const share = async () => {
     const url = buildShareURL(liked);
@@ -111,14 +113,26 @@ export function LikedSheet({
 
         <View style={styles.footer}>
           {liked.length > 0 ? (
-            <Pressable style={styles.shareBtn} onPress={share}>
-              <Feather name={copied ? "check" : "share-2"} size={16} color="#fff" />
-              <Text style={styles.shareText}>{copied ? t("linkCopied") : t("shareList")}</Text>
+            <Pressable
+              style={styles.decideBtn}
+              onPress={() => setShowDecide(true)}
+              accessibilityLabel={t("a11yDecide")}
+            >
+              <Feather name="zap" size={16} color="#fff" />
+              <Text style={styles.decideText}>{t("decideForMe")}</Text>
             </Pressable>
           ) : null}
-          <Pressable style={styles.keep} onPress={onClose}>
-            <Text style={styles.keepText}>{t("keepSwiping")}</Text>
-          </Pressable>
+          <View style={styles.footerRow}>
+            {liked.length > 0 ? (
+              <Pressable style={[styles.secondaryBtn, styles.flex1]} onPress={share}>
+                <Feather name={copied ? "check" : "share-2"} size={15} color={color.ink} />
+                <Text style={styles.secondaryText}>{copied ? t("linkCopied") : t("shareList")}</Text>
+              </Pressable>
+            ) : null}
+            <Pressable style={[styles.secondaryBtn, styles.flex1]} onPress={onClose}>
+              <Text style={styles.secondaryText}>{t("keepSwiping")}</Text>
+            </Pressable>
+          </View>
           {liked.length > 0 ? (
             <Pressable onPress={confirmClear} style={styles.clearBtn} hitSlop={6}>
               <Text style={styles.clearText}>{t("clearAll")}</Text>
@@ -128,6 +142,16 @@ export function LikedSheet({
         </View>
       </View>
 
+      <DecideSheet
+        visible={showDecide}
+        candidates={liked}
+        fromLikes
+        onClose={() => setShowDecide(false)}
+        onOpenDetail={(c) => {
+          setShowDecide(false);
+          setDetail(c);
+        }}
+      />
       <RestaurantSheet visible={!!detail} card={detail} onClose={() => setDetail(null)} />
     </Modal>
   );
@@ -180,9 +204,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   empty: { fontFamily: font.body, fontSize: 14, color: color.inkSoft, textAlign: "center", marginTop: space(10) },
-  footer: { paddingHorizontal: space(4.5), paddingTop: space(4), paddingBottom: space(5), borderTopWidth: 1, borderTopColor: color.line, gap: space(3) },
-  shareBtn: {
-    height: 52,
+  footer: { paddingHorizontal: space(4.5), paddingTop: space(4), paddingBottom: space(5), borderTopWidth: 1, borderTopColor: color.line, gap: space(2.5) },
+  decideBtn: {
+    height: 54,
     borderRadius: radius.lg,
     backgroundColor: color.accent,
     flexDirection: "row",
@@ -190,9 +214,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: space(2),
   },
-  shareText: { fontFamily: font.display, fontSize: 15, color: "#fff" },
-  keep: { height: 52, borderRadius: radius.lg, borderWidth: 1.5, borderColor: color.ink, alignItems: "center", justifyContent: "center" },
-  keepText: { fontFamily: font.display, fontSize: 15, color: color.ink },
+  decideText: { fontFamily: font.display, fontSize: 16, color: "#fff" },
+  footerRow: { flexDirection: "row", gap: space(2.5) },
+  flex1: { flex: 1 },
+  secondaryBtn: {
+    height: 48,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: color.line,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space(1.5),
+  },
+  secondaryText: { fontFamily: font.displaySemi, fontSize: 13.5, color: color.ink },
   clearBtn: { alignSelf: "center", paddingVertical: space(0.5) },
   clearText: { fontFamily: font.bodySemi, fontSize: 13.5, color: color.nope },
   note: { fontFamily: font.body, fontSize: 12, color: color.inkFaint, textAlign: "center" },

@@ -239,8 +239,6 @@ export function DeckScreen() {
 
   const stack = cards.slice(index, index + 3);
   const deckDone = !loading && !error && cards.length > 0 && index >= cards.length;
-  const decidePool = liked.length >= 2 ? liked : cards.slice(index);
-  const canDecide = !loading && !error && decidePool.length > 0;
   const canWiden = effectiveRadius < MAX_RADIUS_M;
 
   return (
@@ -280,15 +278,22 @@ export function DeckScreen() {
             <View style={styles.message}>
               <Text style={styles.messageText}>{liked.length > 0 ? t("allDone") : t("allDoneNoLikes")}</Text>
               {liked.length > 0 ? (
-                <Pressable style={styles.retry} onPress={() => setShowLiked(true)}>
-                  <Text style={styles.retryText}>{t("seeYourN", { n: liked.length })}</Text>
+                <Pressable style={[styles.retry, styles.retrySpaced]} onPress={() => setShowDecide(true)}>
+                  <Text style={styles.retryText}>{t("decideFromSaved", { n: liked.length })}</Text>
                 </Pressable>
               ) : null}
-              {canWiden ? (
-                <Pressable style={styles.linkBtn} onPress={widenSearch}>
-                  <Text style={styles.linkText}>{t("startOver")}</Text>
-                </Pressable>
-              ) : null}
+              <View style={styles.messageActions}>
+                {liked.length > 0 ? (
+                  <Pressable style={styles.linkBtn} onPress={() => setShowLiked(true)}>
+                    <Text style={styles.linkText}>{t("seeYourN", { n: liked.length })}</Text>
+                  </Pressable>
+                ) : null}
+                {canWiden ? (
+                  <Pressable style={styles.linkBtn} onPress={widenSearch}>
+                    <Text style={styles.linkText}>{t("startOver")}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           ) : (
             stack.map((card, i) => (
@@ -306,19 +311,8 @@ export function DeckScreen() {
           ) : null}
         </View>
 
-        {canDecide && !deckDone ? (
-          <Pressable
-            style={[styles.decideBtn, { bottom: insets.bottom + space(23) }]}
-            onPress={() => setShowDecide(true)}
-            accessibilityLabel={t("a11yDecide")}
-          >
-            <Feather name="zap" size={15} color="#fff" />
-            <Text style={styles.decideText}>{t("decideForMe")}</Text>
-          </Pressable>
-        ) : null}
-
         {liked.length > 0 && !deckDone ? (
-          <Pressable style={[styles.likedPill, { bottom: insets.bottom + space(30.5) }]} onPress={() => setShowLiked(true)}>
+          <Pressable style={[styles.likedPill, { bottom: insets.bottom + space(23) }]} onPress={() => setShowLiked(true)}>
             <Feather name="heart" size={13} color={color.like} />
             <Text style={styles.likedPillText}>{t("nLiked", { n: liked.length })}</Text>
             <Feather name="chevron-right" size={14} color={color.inkFaint} />
@@ -358,8 +352,8 @@ export function DeckScreen() {
       />
       <DecideSheet
         visible={showDecide}
-        candidates={decidePool}
-        fromLikes={liked.length >= 2}
+        candidates={liked}
+        fromLikes
         onClose={() => setShowDecide(false)}
         onOpenDetail={(c) => {
           setShowDecide(false);
@@ -420,6 +414,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(6),
     paddingVertical: space(2.5),
   },
+  retrySpaced: { marginTop: space(4) },
   retryText: { fontFamily: font.displaySemi, fontSize: 14, color: color.ink },
   linkBtn: { paddingVertical: space(1.5), paddingHorizontal: space(3) },
   linkText: { fontFamily: font.bodySemi, fontSize: 13.5, color: color.inkSoft, textDecorationLine: "underline" },
@@ -448,23 +443,6 @@ const styles = StyleSheet.create({
   skelBar: { backgroundColor: "rgba(23,20,15,0.09)", borderRadius: 6 },
   skelChips: { flexDirection: "row", gap: space(2), marginTop: space(3.5) },
   skelChip: { width: 64, height: 26, borderRadius: 999, backgroundColor: "rgba(23,20,15,0.09)" },
-  decideBtn: {
-    position: "absolute",
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space(2),
-    backgroundColor: color.ink,
-    borderRadius: radius.pill,
-    paddingHorizontal: space(4.5),
-    paddingVertical: space(2.5),
-    shadowColor: "#17140F",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 5,
-  },
-  decideText: { fontFamily: font.displaySemi, fontSize: 14, color: "#fff", letterSpacing: 0.2 },
   likedPill: {
     position: "absolute",
     alignSelf: "center",

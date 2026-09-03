@@ -32,6 +32,7 @@ const en = {
 
   // decide
   decideForMe: "Decide for me",
+  decideFromSaved: "Decide from your {n} saved",
   decideKicker: "Eat at",
   decideFromLikes: "picked from your saved places",
   decideFromNearby: "picked from what's nearby",
@@ -125,6 +126,7 @@ const th: Record<Key, string> = {
   nLiked: "ชอบ {n} ร้าน",
 
   decideForMe: "เลือกให้เลย",
+  decideFromSaved: "เลือกให้จาก {n} ร้านที่บันทึก",
   decideKicker: "ไปกินที่",
   decideFromLikes: "สุ่มจากร้านที่คุณบันทึกไว้",
   decideFromNearby: "สุ่มจากร้านแถวนี้",
