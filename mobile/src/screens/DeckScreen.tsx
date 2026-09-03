@@ -9,18 +9,22 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { getNearby, type Card } from "../api/client";
 import { useSession, filterCount } from "../store/session";
+import { useT } from "../lib/i18n";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
 import { ActionBar } from "../components/ActionBar";
 import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
+import { RestaurantSheet } from "../components/RestaurantSheet";
 import { color, font, radius, space } from "../theme/tokens";
 
 type Coords = { lat: number; lng: number };
 
 export function DeckScreen() {
   const insets = useSafeAreaInsets();
+  const t = useT();
 
+  const lang = useSession((s) => s.lang);
   const categories = useSession((s) => s.categories);
   const radiusM = useSession((s) => s.radiusM);
   const openNow = useSession((s) => s.openNow);
@@ -32,13 +36,14 @@ export function DeckScreen() {
   const hydrated = useSession((s) => s.hydrated);
 
   const [coords, setCoords] = useState<Coords | null>(null);
-  const [place, setPlace] = useState("Near you");
+  const [place, setPlace] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showLiked, setShowLiked] = useState(false);
+  const [detail, setDetail] = useState<Card | null>(null);
 
   const history = useRef<{ card: Card; dir: SwipeDir }[]>([]);
   const dragX = useSharedValue(0);
@@ -48,7 +53,7 @@ export function DeckScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setError("Location permission is needed to find restaurants near you.");
+        setError(t("needLocation"));
         setLoading(false);
         return;
       }
@@ -63,9 +68,10 @@ export function DeckScreen() {
         /* keep default label */
       }
     } catch {
-      setError("Couldn't get your location. Check location services and try again.");
+      setError(t("locationFailed"));
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -78,19 +84,19 @@ export function DeckScreen() {
     setLoading(true);
     setError(null);
     try {
-      const next = await getNearby(coords.lat, coords.lng, { radiusM, categories, openNow });
+      const next = await getNearby(coords.lat, coords.lng, { radiusM, categories, openNow, lang });
       setCards(next);
       setIndex(0);
       history.current = [];
       if (next.length === 0) {
-        setError("Nothing here with those filters — widen the radius or clear a category.");
+        setError(t("noneWithFilters"));
       }
     } catch (e: any) {
-      setError(e.message ?? "Couldn't load restaurants.");
+      setError(e.message ?? t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [coords, hydrated, radiusM, categories, openNow]);
+  }, [coords, hydrated, radiusM, categories, openNow, lang, t]);
 
   useEffect(() => {
     load();
@@ -125,6 +131,10 @@ export function DeckScreen() {
     if (current) Linking.openURL(current.mapsUri).catch(() => {});
   };
 
+  const openDetail = () => {
+    if (current) setDetail(current);
+  };
+
   const applyFilters = (f: Filters) => {
     setFilters(f);
     setShowFilters(false);
@@ -144,7 +154,7 @@ export function DeckScreen() {
     <View style={styles.root}>
       <View style={{ height: insets.top + space(2) }} />
       <TopBar
-        locationLabel={place}
+        locationLabel={place ?? t("nearYou")}
         filterCount={filterCount({ categories, openNow })}
         onLocation={locate}
         onFilter={() => setShowFilters(true)}
@@ -164,27 +174,25 @@ export function DeckScreen() {
           <View style={styles.message}>
             <Text style={styles.messageText}>{error}</Text>
             <Pressable style={styles.retry} onPress={load}>
-              <Text style={styles.retryText}>Try again</Text>
+              <Text style={styles.retryText}>{t("tryAgain")}</Text>
             </Pressable>
           </View>
         ) : deckDone ? (
           <View style={styles.message}>
-            <Text style={styles.messageText}>
-              {liked.length > 0 ? "That's everyone nearby." : "That's everyone nearby — nothing caught your eye."}
-            </Text>
+            <Text style={styles.messageText}>{liked.length > 0 ? t("allDone") : t("allDoneNoLikes")}</Text>
             {liked.length > 0 ? (
               <Pressable style={styles.retry} onPress={() => setShowLiked(true)}>
-                <Text style={styles.retryText}>See your {liked.length}</Text>
+                <Text style={styles.retryText}>{t("seeYourN", { n: liked.length })}</Text>
               </Pressable>
             ) : null}
             <Pressable style={styles.linkBtn} onPress={load}>
-              <Text style={styles.linkText}>Start over</Text>
+              <Text style={styles.linkText}>{t("startOver")}</Text>
             </Pressable>
           </View>
         ) : (
           stack.map((card, i) => (
             <View key={card.id} style={[StyleSheet.absoluteFill, { zIndex: stack.length - i }]}>
-              <SwipeCard card={card} depth={i} dragX={dragX} onResolve={resolve} onOpen={openDirections} />
+              <SwipeCard card={card} depth={i} dragX={dragX} onResolve={resolve} onDetail={openDetail} />
             </View>
           ))
         )}
@@ -193,9 +201,7 @@ export function DeckScreen() {
       {liked.length > 0 && !deckDone ? (
         <Pressable style={[styles.likedPill, { bottom: insets.bottom + space(23) }]} onPress={() => setShowLiked(true)}>
           <Feather name="heart" size={13} color={color.like} />
-          <Text style={styles.likedPillText}>
-            {liked.length} liked
-          </Text>
+          <Text style={styles.likedPillText}>{t("nLiked", { n: liked.length })}</Text>
           <Feather name="chevron-right" size={14} color={color.inkFaint} />
         </Pressable>
       ) : null}
@@ -223,6 +229,12 @@ export function DeckScreen() {
         onRemove={removeLiked}
         onClear={clearLiked}
         onClose={() => setShowLiked(false)}
+      />
+      <RestaurantSheet
+        visible={!!detail}
+        card={detail}
+        coords={coords}
+        onClose={() => setDetail(null)}
       />
     </View>
   );

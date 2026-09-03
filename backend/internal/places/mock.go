@@ -1,6 +1,7 @@
 package places
 
 import (
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -9,7 +10,7 @@ import (
 // mock.go serves a hand-curated set of real restaurants around the
 // Chula – Samyan – Siam Square area of Bangkok (Banthat Thong food street and
 // nearby), so the app is demoable with no Places key. Names and cuisines are
-// real venues; ratings, prices and distances are approximate stand-ins.
+// real venues; ratings, prices, distances, phones and hours are stand-ins.
 // Photos point at picsum.photos so they load in a browser. Set
 // GOOGLE_PLACES_API_KEY to switch to live Places data everywhere.
 
@@ -49,6 +50,49 @@ var mockSpots = []mockSpot{
 	{"Charmgang", "Charoen Krung", []string{"Thai"}, []string{"thai"}, 3, 4.7, 1700, true},
 }
 
+func mockPhotos(name string, n int) []string {
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, fmt.Sprintf("https://picsum.photos/seed/eatrai-%s-%d/1000/1400", slug(name), i))
+	}
+	return out
+}
+
+var mockCuisineTh = map[string]string{
+	"Thai": "ไทย", "Noodles": "ก๋วยเตี๋ยว", "Isaan": "อีสาน", "Seafood": "ซีฟู้ด",
+	"Grilled": "ปิ้งย่าง", "Dessert": "ของหวาน", "Ice cream": "ไอศกรีม", "Café": "คาเฟ่",
+	"Coffee": "กาแฟ", "Vegetarian": "มังสวิรัติ", "Shabu": "ชาบู", "Suki": "สุกี้",
+	"Sushi": "ซูชิ", "Japanese": "ญี่ปุ่น", "Chinese": "จีน", "Bar": "บาร์",
+}
+
+func (s mockSpot) card(dist int, lang string) Card {
+	cz := s.cuisines
+	if lang == "th" {
+		cz = make([]string, len(s.cuisines))
+		for i, c := range s.cuisines {
+			if th, ok := mockCuisineTh[c]; ok {
+				cz[i] = th
+			} else {
+				cz[i] = c
+			}
+		}
+	}
+	return Card{
+		ID:          "mock_" + slug(s.name),
+		Name:        s.name,
+		Address:     s.area + ", Bangkok",
+		PriceLevel:  s.price,
+		Rating:      s.rating,
+		RatingCount: s.count,
+		Cuisines:    cz,
+		DistanceM:   dist,
+		OpenNow:     s.open,
+		OpenKnown:   true,
+		MapsURI:     "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(s.name+" Bangkok"),
+		PhotoURLs:   mockPhotos(s.name, nearbyPhotos),
+	}
+}
+
 // MockNearby gives each spot a fixed pseudo-distance, then applies the query's
 // radius / category / open filters — so a smaller radius really does return
 // fewer places, the way live Places does.
@@ -56,11 +100,9 @@ func MockNearby(q Query) []Card {
 	n := len(mockSpots)
 	cards := make([]Card, 0, n)
 	for i, s := range mockSpots {
-		// deterministic, shuffled rank 0..n-1 -> ~90m .. ~2.8km
-		rank := (i*37 + 5) % n
-		dist := float64(90 + rank*130)
-
-		if q.RadiusM > 0 && dist > q.RadiusM {
+		rank := (i*37 + 5) % n // deterministic shuffle -> ~90m .. ~2.8km
+		dist := 90 + rank*130
+		if q.RadiusM > 0 && float64(dist) > q.RadiusM {
 			continue
 		}
 		if len(q.Categories) > 0 && !intersects(s.cats, q.Categories) {
@@ -69,23 +111,43 @@ func MockNearby(q Query) []Card {
 		if q.OpenNow && !s.open {
 			continue
 		}
-		cards = append(cards, Card{
-			ID:          "mock_" + slug(s.name),
-			Name:        s.name,
-			Address:     s.area + ", Bangkok",
-			PriceLevel:  s.price,
-			Rating:      s.rating,
-			RatingCount: s.count,
-			Cuisines:    s.cuisines,
-			DistanceM:   int(dist),
-			OpenNow:     s.open,
-			OpenKnown:   true,
-			MapsURI:     "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(s.name+" Bangkok"),
-			PhotoURLs:   []string{"https://picsum.photos/seed/eatrai-" + slug(s.name) + "/900/1300"},
-		})
+		cards = append(cards, s.card(dist, q.Lang))
 	}
 	sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
 	return cards
+}
+
+// MockPlace resolves a mock id back to a spot and fakes the detail fields.
+func MockPlace(id, lang string, lat, lng float64) Place {
+	want := strings.TrimPrefix(id, "mock_")
+	for _, s := range mockSpots {
+		if slug(s.name) != want {
+			continue
+		}
+		c := s.card(0, lang)
+		c.PhotoURLs = mockPhotos(s.name, detailPhotos)
+		hours := []string{
+			"Monday: 10:00 AM – 10:00 PM", "Tuesday: 10:00 AM – 10:00 PM",
+			"Wednesday: 10:00 AM – 10:00 PM", "Thursday: 10:00 AM – 10:00 PM",
+			"Friday: 10:00 AM – 11:00 PM", "Saturday: 10:00 AM – 11:00 PM",
+			"Sunday: 10:00 AM – 10:00 PM",
+		}
+		if lang == "th" {
+			hours = []string{
+				"จันทร์: 10:00 – 22:00", "อังคาร: 10:00 – 22:00", "พุธ: 10:00 – 22:00",
+				"พฤหัสบดี: 10:00 – 22:00", "ศุกร์: 10:00 – 23:00", "เสาร์: 10:00 – 23:00",
+				"อาทิตย์: 10:00 – 22:00",
+			}
+		}
+		return Place{
+			Card:         c,
+			Phone:        "+66 2 000 0000",
+			Website:      "https://maps.google.com/?q=" + url.QueryEscape(s.name+" Bangkok"),
+			Summary:      "",
+			WeekdayHours: hours,
+		}
+	}
+	return Place{Card: Card{ID: id, Name: "Unknown place", Cuisines: []string{"Restaurant"}}}
 }
 
 func intersects(a, b []string) bool {

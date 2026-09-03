@@ -46,6 +46,7 @@ func (s *Server) Router() http.Handler {
 	r.Get("/status", health)
 	r.Get("/healthcheck", health)
 	r.Get("/nearby", s.handleNearby)
+	r.Get("/place", s.handlePlace)
 	r.Get("/photo", s.handlePhoto)
 	return r
 }
@@ -75,14 +76,15 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 		sort.Strings(categories)
 	}
 	openNow := q.Get("openNow") == "true" || q.Get("openNow") == "1"
+	lang := normLang(q.Get("lang"))
 
 	query := places.Query{
 		Lat: lat, Lng: lng, RadiusM: radius,
-		Categories: categories, OpenNow: openNow,
+		Categories: categories, OpenNow: openNow, Lang: lang,
 		PhotoBase: publicBase(r),
 	}
 
-	key := cacheKey(lat, lng, radius, categories, openNow)
+	key := cacheKey(lat, lng, radius, categories, openNow) + "|" + lang
 	if cached, ok := s.Cache.Get(key); ok {
 		writeJSON(w, http.StatusOK, map[string]any{"cards": cached, "cached": true})
 		return
@@ -102,6 +104,42 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 
 	s.Cache.Set(key, cards)
 	writeJSON(w, http.StatusOK, map[string]any{"cards": cards})
+}
+
+func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	id := strings.TrimSpace(q.Get("id"))
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "id is required"})
+		return
+	}
+	lang := normLang(q.Get("lang"))
+	lat, _ := strconv.ParseFloat(q.Get("lat"), 64)
+	lng, _ := strconv.ParseFloat(q.Get("lng"), 64)
+
+	key := "place|" + id + "|" + lang
+	if cached, ok := s.Cache.Get(key); ok {
+		writeJSON(w, http.StatusOK, cached)
+		return
+	}
+
+	var (
+		place places.Place
+		err   error
+	)
+	if s.Mock {
+		place = places.MockPlace(id, lang, lat, lng)
+	} else {
+		place, err = s.Places.GetPlace(r.Context(), id, lang, publicBase(r), lat, lng)
+		if err != nil {
+			s.Log.Error("places detail", "err", err)
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not load that place"})
+			return
+		}
+	}
+
+	s.Cache.Set(key, place)
+	writeJSON(w, http.StatusOK, place)
 }
 
 func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {
@@ -166,4 +204,11 @@ func cacheKey(lat, lng, radius float64, categories []string, openNow bool) strin
 
 func round3(f float64) float64 {
 	return float64(int(f*1000+0.5)) / 1000
+}
+
+func normLang(s string) string {
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(s)), "th") {
+		return "th"
+	}
+	return ""
 }

@@ -5,35 +5,42 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
+import { Kanit_600SemiBold, Kanit_700Bold } from "@expo-google-fonts/kanit";
 import {
-  BricolageGrotesque_700Bold,
-  BricolageGrotesque_800ExtraBold,
-} from "@expo-google-fonts/bricolage-grotesque";
-import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_500Medium,
-  HankenGrotesk_600SemiBold,
-  HankenGrotesk_700Bold,
-} from "@expo-google-fonts/hanken-grotesk";
+  Anuphan_400Regular,
+  Anuphan_500Medium,
+  Anuphan_600SemiBold,
+  Anuphan_700Bold,
+} from "@expo-google-fonts/anuphan";
 
 import { DeckScreen } from "./src/screens/DeckScreen";
+import { SharedListScreen } from "./src/screens/SharedListScreen";
+import { parseSharedList } from "./src/lib/sharing";
 import { color } from "./src/theme/tokens";
 
 export default function App() {
   const [loaded] = useFonts({
-    Bricolage_700Bold: BricolageGrotesque_700Bold,
-    Bricolage_800ExtraBold: BricolageGrotesque_800ExtraBold,
-    Hanken_400Regular: HankenGrotesk_400Regular,
-    Hanken_500Medium: HankenGrotesk_500Medium,
-    Hanken_600SemiBold: HankenGrotesk_600SemiBold,
-    Hanken_700Bold: HankenGrotesk_700Bold,
+    Kanit_600SemiBold,
+    Kanit_700Bold,
+    Anuphan_400Regular,
+    Anuphan_500Medium,
+    Anuphan_600SemiBold,
+    Anuphan_700Bold,
   });
+
+  const shared = parseSharedList();
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.paper }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        {loaded ? <DeckScreen /> : <View style={{ flex: 1, backgroundColor: color.paper }} />}
+        {!loaded ? (
+          <View style={{ flex: 1, backgroundColor: color.paper }} />
+        ) : shared ? (
+          <SharedListScreen ids={shared.ids} />
+        ) : (
+          <DeckScreen />
+        )}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

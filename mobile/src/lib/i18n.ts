@@ -1,0 +1,152 @@
+import { useCallback } from "react";
+import { useSession } from "../store/session";
+import type { Lang } from "../api/client";
+
+const en = {
+  langLabel: "EN",
+  otherLangLabel: "ไทย",
+
+  nearYou: "Near you",
+
+  // filters
+  filters: "Filters",
+  reset: "Reset",
+  intoWhat: "What are you into?",
+  howFar: "How far?",
+  openNowOnly: "Open now only",
+  showRestaurants: "Show restaurants",
+
+  // deck states
+  needLocation: "Location permission is needed to find restaurants near you.",
+  locationFailed: "Couldn't get your location. Check location services and try again.",
+  loadFailed: "Couldn't load restaurants.",
+  noneWithFilters: "Nothing here with those filters — widen the radius or clear a category.",
+  allDone: "That's everyone nearby.",
+  allDoneNoLikes: "That's everyone nearby — nothing caught your eye.",
+  tryAgain: "Try again",
+  startOver: "Start over",
+  seeYourN: "See your {n}",
+  nLiked: "{n} liked",
+
+  // card / status
+  open: "Open now",
+  closed: "Closed",
+  yourTaste: "LIKE",
+  pass: "NOPE",
+
+  // saved
+  saved: "Saved",
+  savedSub: "Tap a place for details, hours and directions.",
+  nPlaces: "{n} places",
+  keepSwiping: "Keep swiping",
+  clearAll: "Clear all",
+  clearTitle: "Clear your list?",
+  clearBody: "This removes all saved places on this device.",
+  cancel: "Cancel",
+  nothingSaved: "Nothing yet — swipe right on a place you like.",
+  savedNote: "Saved on this device — not synced, cleared if you delete the app.",
+  shareList: "Share list",
+  linkCopied: "Link copied",
+
+  // detail sheet
+  call: "Call",
+  website: "Website",
+  directions: "Directions",
+  hours: "Hours",
+  reviews: "reviews",
+  openInMaps: "Open in Maps",
+
+  // shared list
+  sharedWithYou: "Shared with you",
+  openEatRai: "Open EatRai",
+  loadingList: "Loading…",
+
+  // a11y
+  a11yUndo: "Undo",
+  a11yPass: "Pass",
+  a11yLike: "Like",
+  a11yDirections: "Directions",
+  a11yFilters: "Filters",
+  a11yLanguage: "Switch language",
+};
+
+type Key = keyof typeof en;
+
+const th: Record<Key, string> = {
+  langLabel: "ไทย",
+  otherLangLabel: "EN",
+
+  nearYou: "ใกล้คุณ",
+
+  filters: "ตัวกรอง",
+  reset: "ล้าง",
+  intoWhat: "อยากกินอะไร?",
+  howFar: "ระยะทาง",
+  openNowOnly: "เฉพาะร้านที่เปิดอยู่",
+  showRestaurants: "ดูร้านอาหาร",
+
+  needLocation: "ต้องเปิดสิทธิ์ตำแหน่งเพื่อค้นหาร้านอาหารใกล้คุณ",
+  locationFailed: "ไม่สามารถระบุตำแหน่งได้ ตรวจสอบบริการตำแหน่งแล้วลองใหม่",
+  loadFailed: "โหลดร้านอาหารไม่สำเร็จ",
+  noneWithFilters: "ไม่พบร้านตามตัวกรองนี้ — ลองเพิ่มระยะทางหรือเอาหมวดหมู่ออก",
+  allDone: "หมดแล้วสำหรับแถวนี้",
+  allDoneNoLikes: "หมดแล้วสำหรับแถวนี้ — ยังไม่เจอร้านที่ถูกใจ",
+  tryAgain: "ลองอีกครั้ง",
+  startOver: "เริ่มใหม่",
+  seeYourN: "ดู {n} ร้านที่ชอบ",
+  nLiked: "ชอบ {n} ร้าน",
+
+  open: "เปิดอยู่",
+  closed: "ปิดอยู่",
+  yourTaste: "ชอบ",
+  pass: "ผ่าน",
+
+  saved: "บันทึกไว้",
+  savedSub: "แตะที่ร้านเพื่อดูรายละเอียด เวลาเปิด และเส้นทาง",
+  nPlaces: "{n} ร้าน",
+  keepSwiping: "ปัดต่อ",
+  clearAll: "ล้างทั้งหมด",
+  clearTitle: "ล้างรายการ?",
+  clearBody: "ลบร้านที่บันทึกไว้ทั้งหมดในเครื่องนี้",
+  cancel: "ยกเลิก",
+  nothingSaved: "ยังไม่มี — ปัดขวาร้านที่คุณชอบ",
+  savedNote: "บันทึกในเครื่องนี้ ไม่ซิงก์ และจะหายเมื่อลบแอป",
+  shareList: "แชร์รายการ",
+  linkCopied: "คัดลอกลิงก์แล้ว",
+
+  call: "โทร",
+  website: "เว็บไซต์",
+  directions: "เส้นทาง",
+  hours: "เวลาทำการ",
+  reviews: "รีวิว",
+  openInMaps: "เปิดใน Maps",
+
+  sharedWithYou: "มีคนแชร์ให้คุณ",
+  openEatRai: "เปิด EatRai",
+  loadingList: "กำลังโหลด…",
+
+  a11yUndo: "ย้อนกลับ",
+  a11yPass: "ผ่าน",
+  a11yLike: "ชอบ",
+  a11yDirections: "เส้นทาง",
+  a11yFilters: "ตัวกรอง",
+  a11yLanguage: "เปลี่ยนภาษา",
+};
+
+const dict: Record<Lang, Record<Key, string>> = { en, th };
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
+  let s = dict[lang][key] ?? dict.en[key] ?? key;
+  if (vars) for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, String(vars[k]));
+  return s;
+}
+
+export function useT() {
+  const lang = useSession((s) => s.lang);
+  return useCallback(
+    (key: Key, vars?: Record<string, string | number>) => translate(lang, key, vars),
+    [lang],
+  );
+}
+
+export type TKey = Key;

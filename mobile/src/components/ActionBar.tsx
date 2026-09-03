@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { color } from "../theme/tokens";
+import { useT } from "../lib/i18n";
 
 export function ActionBar({
   onUndo,
@@ -18,6 +19,7 @@ export function ActionBar({
   canUndo: boolean;
   disabled: boolean;
 }) {
+  const t = useT();
   return (
     <View style={styles.bar} pointerEvents="box-none">
       <Pressable
@@ -25,20 +27,20 @@ export function ActionBar({
         disabled={!canUndo}
         style={[styles.btn, styles.sm, !canUndo && styles.faded]}
         hitSlop={8}
-        accessibilityLabel="Undo"
+        accessibilityLabel={t("a11yUndo")}
       >
         <Feather name="rotate-ccw" size={19} color={color.inkSoft} />
       </Pressable>
 
-      <Pressable onPress={onNope} disabled={disabled} style={[styles.btn, styles.nope, disabled && styles.faded]} hitSlop={8} accessibilityLabel="Pass">
+      <Pressable onPress={onNope} disabled={disabled} style={[styles.btn, styles.nope, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yPass")}>
         <Feather name="x" size={26} color={color.nope} />
       </Pressable>
 
-      <Pressable onPress={onLike} disabled={disabled} style={[styles.btn, styles.like, disabled && styles.faded]} hitSlop={8} accessibilityLabel="Like">
+      <Pressable onPress={onLike} disabled={disabled} style={[styles.btn, styles.like, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yLike")}>
         <Feather name="heart" size={28} color={color.like} />
       </Pressable>
 
-      <Pressable onPress={onDirections} disabled={disabled} style={[styles.btn, styles.sm, disabled && styles.faded]} hitSlop={8} accessibilityLabel="Directions">
+      <Pressable onPress={onDirections} disabled={disabled} style={[styles.btn, styles.sm, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yDirections")}>
         <Feather name="navigation" size={19} color={color.inkSoft} />
       </Pressable>
     </View>

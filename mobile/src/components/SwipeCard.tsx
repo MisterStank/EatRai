@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -14,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { color, font, radius, space } from "../theme/tokens";
 import { fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import { useT } from "../lib/i18n";
+import { useSession } from "../store/session";
 import type { Card } from "../api/client";
 
 export type SwipeDir = "like" | "nope";
@@ -26,23 +28,39 @@ export function SwipeCard({
   depth,
   dragX,
   onResolve,
-  onOpen,
+  onDetail,
 }: {
   card: Card;
   depth: number; // 0 = top / interactive
   dragX?: SharedValue<number>;
   onResolve: (dir: SwipeDir) => void;
-  onOpen: () => void;
+  onDetail: () => void;
 }) {
+  const t = useT();
+  const lang = useSession((s) => s.lang);
   const isTop = depth === 0;
   const x = useSharedValue(0);
   const y = useSharedValue(0);
 
+  const photos = card.photoUrls?.length ? card.photoUrls : [""];
+  const [pi, setPi] = useState(0);
+  const [cardH, setCardH] = useState(0);
+  const idx = Math.min(pi, photos.length - 1);
+
+  const step = (dir: 1 | -1) => setPi((n) => (n + dir + photos.length) % photos.length);
+
   const tap = Gesture.Tap()
     .enabled(isTop)
     .maxDistance(10)
-    .onEnd((_e, success) => {
-      if (success) runOnJS(onOpen)();
+    .onEnd((e, success) => {
+      if (!success) return;
+      if (cardH > 0 && e.y > cardH * 0.72) {
+        runOnJS(onDetail)();
+      } else if (photos.length > 1) {
+        runOnJS(step)(e.x < width * 0.5 ? -1 : 1);
+      } else {
+        runOnJS(onDetail)();
+      }
     });
 
   const pan = Gesture.Pan()
@@ -87,15 +105,30 @@ export function SwipeCard({
   }));
 
   const body = (
-    <Animated.View style={[styles.card, animStyle]}>
+    <Animated.View
+      style={[styles.card, animStyle]}
+      onLayout={(e) => setCardH(e.nativeEvent.layout.height)}
+    >
       <LinearGradient
         colors={["#F4AE63", "#E7743A", "#BE4127"]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      {card.photoUrls?.[0] ? (
-        <Image source={{ uri: card.photoUrls[0] }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      {(isTop ? photos[idx] : photos[0]) ? (
+        <Image
+          source={{ uri: isTop ? photos[idx] : photos[0] }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      ) : null}
+
+      {isTop && photos.length > 1 ? (
+        <View style={styles.segments}>
+          {photos.map((_, i) => (
+            <View key={i} style={[styles.segment, i === idx && styles.segmentOn]} />
+          ))}
+        </View>
       ) : null}
 
       <LinearGradient
@@ -107,24 +140,27 @@ export function SwipeCard({
       {isTop ? (
         <>
           <Animated.View style={[styles.stamp, styles.stampLike, likeStamp]}>
-            <Text style={styles.stampLikeText}>LIKE</Text>
+            <Text style={styles.stampLikeText}>{t("yourTaste")}</Text>
           </Animated.View>
           <Animated.View style={[styles.stamp, styles.stampNope, nopeStamp]}>
-            <Text style={styles.stampNopeText}>NOPE</Text>
+            <Text style={styles.stampNopeText}>{t("pass")}</Text>
           </Animated.View>
         </>
       ) : null}
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {card.name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {card.name}
+          </Text>
+          {isTop ? <Feather name="chevron-up" size={18} color="rgba(255,255,255,0.7)" /> : null}
+        </View>
         <Text style={styles.meta} numberOfLines={1}>
           {[fmtPrice(card.priceLevel), fmtCuisines(card.cuisines)].filter(Boolean).join("  ·  ")}
         </Text>
         <View style={styles.chips}>
           <View style={styles.chip}>
-            <Text style={styles.chipText}>{fmtDistance(card.distanceM)}</Text>
+            <Text style={styles.chipText}>{fmtDistance(card.distanceM, lang)}</Text>
           </View>
           {card.rating > 0 ? (
             <View style={styles.chip}>
@@ -135,7 +171,7 @@ export function SwipeCard({
           {card.openKnown ? (
             <View style={styles.chip}>
               <View style={[styles.dot, { backgroundColor: card.openNow ? color.likeBright : color.gold }]} />
-              <Text style={styles.chipText}>{card.openNow ? "Open now" : "Closed"}</Text>
+              <Text style={styles.chipText}>{card.openNow ? t("open") : t("closed")}</Text>
             </View>
           ) : null}
         </View>
@@ -154,9 +190,20 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceAlt,
     overflow: "hidden",
   },
+  segments: {
+    position: "absolute",
+    top: space(2.5),
+    left: space(3),
+    right: space(3),
+    flexDirection: "row",
+    gap: space(1.25),
+  },
+  segment: { flex: 1, height: 3, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.32)" },
+  segmentOn: { backgroundColor: "rgba(255,255,255,0.95)" },
   scrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: "64%" },
   info: { position: "absolute", left: 0, right: 0, bottom: 0, padding: space(5.5) },
-  name: { color: color.onPhoto, fontFamily: font.display, fontSize: 27, letterSpacing: -0.5 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: space(1.5) },
+  name: { color: color.onPhoto, fontFamily: font.display, fontSize: 26, letterSpacing: -0.3, flexShrink: 1 },
   meta: { color: "rgba(255,255,255,0.87)", fontFamily: font.body, fontSize: 13.5, marginTop: space(2.25) },
   chips: { flexDirection: "row", gap: space(2), marginTop: space(3.5) },
   chip: {
@@ -183,6 +230,6 @@ const styles = StyleSheet.create({
   },
   stampLike: { left: space(6), transform: [{ rotate: "-12deg" }], borderColor: color.likeBright },
   stampNope: { right: space(6), transform: [{ rotate: "12deg" }], borderColor: color.nope },
-  stampLikeText: { color: color.likeBright, fontFamily: font.display, fontSize: 30, letterSpacing: 3 },
-  stampNopeText: { color: color.nope, fontFamily: font.display, fontSize: 30, letterSpacing: 3 },
+  stampLikeText: { color: color.likeBright, fontFamily: font.display, fontSize: 28, letterSpacing: 2 },
+  stampNopeText: { color: color.nope, fontFamily: font.display, fontSize: 28, letterSpacing: 2 },
 });

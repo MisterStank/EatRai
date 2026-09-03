@@ -1,26 +1,25 @@
-export type Category = { key: string; label: string };
+import type { Lang } from "../api/client";
+
+export type Category = { key: string; en: string; th: string };
 
 // key must match the backend's categoryTypes map (internal/places/places.go).
 export const CATEGORIES: Category[] = [
-  { key: "thai", label: "Thai" },
-  { key: "isaan", label: "Isaan / Northeastern" },
-  { key: "noodles", label: "Noodles" },
-  { key: "street", label: "Street food" },
-  { key: "seafood", label: "Seafood" },
-  { key: "japanese", label: "Japanese" },
-  { key: "cafe", label: "Café" },
-  { key: "bar", label: "Bar" },
-  { key: "bbq", label: "Grill / BBQ" },
-  { key: "dessert", label: "Dessert" },
-  { key: "vegetarian", label: "Vegetarian" },
-  { key: "chinese", label: "Chinese" },
-  { key: "pizza", label: "Pizza" },
-  { key: "burgers", label: "Burgers" },
+  { key: "thai", en: "Thai", th: "ไทย" },
+  { key: "isaan", en: "Isaan / Northeastern", th: "อีสาน" },
+  { key: "noodles", en: "Noodles", th: "ก๋วยเตี๋ยว" },
+  { key: "street", en: "Street food", th: "สตรีทฟู้ด" },
+  { key: "seafood", en: "Seafood", th: "ซีฟู้ด" },
+  { key: "japanese", en: "Japanese", th: "ญี่ปุ่น" },
+  { key: "cafe", en: "Café", th: "คาเฟ่" },
+  { key: "bar", en: "Bar", th: "บาร์" },
+  { key: "bbq", en: "Grill / BBQ", th: "ปิ้งย่าง" },
+  { key: "dessert", en: "Dessert", th: "ของหวาน" },
+  { key: "vegetarian", en: "Vegetarian", th: "มังสวิรัติ" },
+  { key: "chinese", en: "Chinese", th: "จีน" },
+  { key: "pizza", en: "Pizza", th: "พิซซ่า" },
+  { key: "burgers", en: "Burgers", th: "เบอร์เกอร์" },
 ];
 
-export const RADII: { m: number; label: string }[] = [
-  { m: 500, label: "500 m" },
-  { m: 1000, label: "1 km" },
-  { m: 2000, label: "2 km" },
-  { m: 5000, label: "5 km" },
-];
+export const catLabel = (c: Category, lang: Lang) => (lang === "th" ? c.th : c.en);
+
+export const RADII: { m: number }[] = [{ m: 500 }, { m: 1000 }, { m: 2000 }, { m: 5000 }];

@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { color, font, radius, space } from "../theme/tokens";
-import { CATEGORIES, RADII } from "../lib/categories";
+import { CATEGORIES, RADII, catLabel } from "../lib/categories";
+import { fmtDistance } from "../lib/format";
+import { useT } from "../lib/i18n";
+import { useSession } from "../store/session";
 
 export type Filters = { categories: string[]; radiusM: number; openNow: boolean };
 
@@ -16,6 +19,8 @@ export function FilterSheet({
   onApply: (f: Filters) => void;
   onClose: () => void;
 }) {
+  const t = useT();
+  const lang = useSession((s) => s.lang);
   const [cats, setCats] = useState<string[]>(value.categories);
   const [radiusM, setRadiusM] = useState<number>(value.radiusM);
   const [openNow, setOpenNow] = useState<boolean>(value.openNow);
@@ -44,14 +49,14 @@ export function FilterSheet({
         <View style={styles.grabber} />
 
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Filters</Text>
+          <Text style={styles.title}>{t("filters")}</Text>
           <Pressable onPress={reset} hitSlop={8}>
-            <Text style={styles.reset}>Reset</Text>
+            <Text style={styles.reset}>{t("reset")}</Text>
           </Pressable>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space(3) }}>
-          <Text style={styles.label}>What are you into?</Text>
+          <Text style={styles.label}>{t("intoWhat")}</Text>
           <View style={styles.chips}>
             {CATEGORIES.map((c) => {
               const on = cats.includes(c.key);
@@ -61,34 +66,36 @@ export function FilterSheet({
                   onPress={() => toggle(c.key)}
                   style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
                 >
-                  <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>{c.label}</Text>
+                  <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>
+                    {catLabel(c, lang)}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <Text style={styles.label}>How far?</Text>
+          <Text style={styles.label}>{t("howFar")}</Text>
           <View style={styles.segmented}>
             {RADII.map((r) => {
               const on = radiusM === r.m;
               return (
                 <Pressable key={r.m} onPress={() => setRadiusM(r.m)} style={[styles.segment, on && styles.segmentOn]}>
-                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{r.label}</Text>
+                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>{fmtDistance(r.m, lang)}</Text>
                 </Pressable>
               );
             })}
           </View>
 
           <Pressable style={styles.toggleRow} onPress={() => setOpenNow((v) => !v)}>
-            <Text style={styles.toggleLabel}>Open now only</Text>
+            <Text style={styles.toggleLabel}>{t("openNowOnly")}</Text>
             <View style={[styles.track, openNow ? styles.trackOn : styles.trackOff]}>
-              <View style={[styles.knob, openNow ? styles.knobOn : styles.knobOff]} />
+              <View style={styles.knob} />
             </View>
           </Pressable>
         </ScrollView>
 
         <Pressable style={styles.apply} onPress={() => onApply({ categories: cats, radiusM, openNow })}>
-          <Text style={styles.applyText}>Show restaurants</Text>
+          <Text style={styles.applyText}>{t("showRestaurants")}</Text>
         </Pressable>
       </View>
     </Modal>
@@ -112,12 +119,12 @@ const styles = StyleSheet.create({
   },
   grabber: { width: 40, height: 4, borderRadius: 999, backgroundColor: "#DDD3C2", alignSelf: "center" },
   headerRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: space(4) },
-  title: { fontFamily: font.display, fontSize: 23, color: color.ink, letterSpacing: -0.4 },
+  title: { fontFamily: font.display, fontSize: 22, color: color.ink },
   reset: { fontFamily: font.bodySemi, fontSize: 14, color: color.accent },
   label: {
     fontFamily: font.bodyBold,
     fontSize: 12,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
     color: color.inkFaint,
     marginTop: space(6),
@@ -140,7 +147,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  segmentText: { fontFamily: font.bodySemi, fontSize: 14, color: color.inkFaint },
+  segmentText: { fontFamily: font.bodySemi, fontSize: 13.5, color: color.inkFaint },
   segmentTextOn: { color: color.ink, fontFamily: font.bodyBold },
   toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space(5.5) },
   toggleLabel: { fontFamily: font.bodySemi, fontSize: 15, color: color.ink },
@@ -148,8 +155,6 @@ const styles = StyleSheet.create({
   trackOn: { backgroundColor: color.accent, alignItems: "flex-end" },
   trackOff: { backgroundColor: color.line, alignItems: "flex-start" },
   knob: { width: 22, height: 22, borderRadius: 999, backgroundColor: "#fff" },
-  knobOn: {},
-  knobOff: {},
   apply: {
     height: 54,
     borderRadius: radius.lg,

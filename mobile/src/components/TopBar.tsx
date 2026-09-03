@@ -2,6 +2,8 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { color, font, radius, space } from "../theme/tokens";
+import { useT } from "../lib/i18n";
+import { useSession } from "../store/session";
 
 export function TopBar({
   locationLabel,
@@ -14,6 +16,10 @@ export function TopBar({
   onLocation: () => void;
   onFilter: () => void;
 }) {
+  const t = useT();
+  const lang = useSession((s) => s.lang);
+  const setLang = useSession((s) => s.setLang);
+
   return (
     <View style={styles.bar}>
       <Pressable onPress={onLocation} style={styles.pill} hitSlop={6}>
@@ -24,14 +30,25 @@ export function TopBar({
         <Feather name="chevron-down" size={13} color={color.inkFaint} />
       </Pressable>
 
-      <Pressable onPress={onFilter} style={styles.filterBtn} hitSlop={6} accessibilityLabel="Filters">
-        <Feather name="sliders" size={19} color={color.ink} />
-        {filterCount > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{filterCount}</Text>
-          </View>
-        ) : null}
-      </Pressable>
+      <View style={styles.right}>
+        <Pressable
+          onPress={() => setLang(lang === "en" ? "th" : "en")}
+          style={styles.langBtn}
+          hitSlop={6}
+          accessibilityLabel={t("a11yLanguage")}
+        >
+          <Text style={styles.langText}>{lang === "en" ? "ไทย" : "EN"}</Text>
+        </Pressable>
+
+        <Pressable onPress={onFilter} style={styles.filterBtn} hitSlop={6} accessibilityLabel={t("a11yFilters")}>
+          <Feather name="sliders" size={19} color={color.ink} />
+          {filterCount > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{filterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -47,7 +64,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space(1.75),
-    maxWidth: 220,
+    maxWidth: 190,
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.line,
@@ -56,6 +73,19 @@ const styles = StyleSheet.create({
     paddingVertical: space(2.25),
   },
   pillText: { color: color.ink, fontFamily: font.bodySemi, fontSize: 14, flexShrink: 1 },
+  right: { flexDirection: "row", alignItems: "center", gap: space(2) },
+  langBtn: {
+    minWidth: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.line,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space(2),
+  },
+  langText: { fontFamily: font.bodyBold, fontSize: 13, color: color.ink },
   filterBtn: {
     width: 44,
     height: 44,

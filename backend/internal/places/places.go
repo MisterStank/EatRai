@@ -19,11 +19,20 @@ import (
 
 const (
 	searchURL  = "https://places.googleapis.com/v1/places:searchNearby"
+	detailURL  = "https://places.googleapis.com/v1/places/"
 	photoMedia = "https://places.googleapis.com/v1/%s/media"
 	searchMask = "places.id,places.displayName,places.formattedAddress,places.location," +
 		"places.priceLevel,places.rating,places.userRatingCount,places.types," +
 		"places.primaryTypeDisplayName,places.photos,places.currentOpeningHours.openNow," +
 		"places.googleMapsUri"
+	detailMask = "id,displayName,formattedAddress,location,priceLevel,rating," +
+		"userRatingCount,types,primaryTypeDisplayName,photos,googleMapsUri," +
+		"currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions," +
+		"regularOpeningHours.weekdayDescriptions,internationalPhoneNumber," +
+		"nationalPhoneNumber,websiteUri,editorialSummary"
+
+	nearbyPhotos = 5
+	detailPhotos = 10
 )
 
 // Card is what the app renders. Stable JSON shape shared with the mobile client.
@@ -42,6 +51,15 @@ type Card struct {
 	MapsURI     string   `json:"mapsUri"`
 }
 
+// Place is the detail payload from /place — a Card plus contact / hours info.
+type Place struct {
+	Card
+	Phone        string   `json:"phone"`
+	Website      string   `json:"website"`
+	Summary      string   `json:"summary"`
+	WeekdayHours []string `json:"weekdayHours"`
+}
+
 type Client struct {
 	APIKey string
 	HTTP   *http.Client
@@ -57,6 +75,7 @@ type Query struct {
 	RadiusM    float64
 	Categories []string // friendly keys; see categoryTypes
 	OpenNow    bool
+	Lang       string // "" or "th" — Places languageCode
 	// PhotoBase is the public base URL of this service (e.g. https://api.example
 	// or http://localhost:8080) used to build proxied photo links.
 	PhotoBase string
@@ -64,7 +83,7 @@ type Query struct {
 
 // SearchNearby calls Places and returns normalised cards, nearest first.
 func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
-	reqBody, _ := json.Marshal(map[string]any{
+	body := map[string]any{
 		"includedTypes":  includedTypes(q.Categories),
 		"maxResultCount": 20,
 		"locationRestriction": map[string]any{
@@ -73,7 +92,11 @@ func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
 				"radius": clampRadius(q.RadiusM),
 			},
 		},
-	})
+	}
+	if lc := langCode(q.Lang); lc != "" {
+		body["languageCode"] = lc
+	}
+	reqBody, _ := json.Marshal(body)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchURL, bytes.NewReader(reqBody))
 	if err != nil {
@@ -105,7 +128,7 @@ func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
 
 	cards := make([]Card, 0, len(out.Places))
 	for _, p := range out.Places {
-		card := p.toCard(q.Lat, q.Lng, q.PhotoBase)
+		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, langCode(q.Lang))
 		if q.OpenNow && card.OpenKnown && !card.OpenNow {
 			continue
 		}
@@ -113,6 +136,52 @@ func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
 	}
 	sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
 	return cards, nil
+}
+
+// GetPlace fetches Place Details for one place ID. lat/lng are optional — when
+// given, the result carries a distance.
+func (c *Client) GetPlace(ctx context.Context, id, lang, photoBase string, lat, lng float64) (Place, error) {
+	u := detailURL + url.PathEscape(id)
+	if lc := langCode(lang); lc != "" {
+		u += "?languageCode=" + lc
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return Place{}, err
+	}
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", detailMask)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return Place{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error struct{ Message string } `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		return Place{}, fmt.Errorf("place %d: %s", resp.StatusCode, e.Error.Message)
+	}
+
+	var p apiPlace
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		return Place{}, err
+	}
+
+	card := p.toCard(lat, lng, photoBase, detailPhotos, langCode(lang))
+	hours := p.CurrentOpeningHours.WeekdayDescriptions
+	if len(hours) == 0 {
+		hours = p.RegularOpeningHours.WeekdayDescriptions
+	}
+	return Place{
+		Card:         card,
+		Phone:        firstNonEmpty(p.InternationalPhoneNumber, p.NationalPhoneNumber),
+		Website:      p.WebsiteURI,
+		Summary:      p.EditorialSummary.Text,
+		WeekdayHours: hours,
+	}, nil
 }
 
 // FetchPhoto streams the bytes for a Places photo resource name
@@ -143,6 +212,11 @@ func (c *Client) FetchPhoto(ctx context.Context, name string, maxWidth int) (io.
 
 // --- Places (New) response shapes -------------------------------------------
 
+type openingHours struct {
+	OpenNow             *bool    `json:"openNow"`
+	WeekdayDescriptions []string `json:"weekdayDescriptions"`
+}
+
 type apiPlace struct {
 	ID               string                                `json:"id"`
 	DisplayName      struct{ Text string }                 `json:"displayName"`
@@ -156,13 +230,16 @@ type apiPlace struct {
 	Photos           []struct {
 		Name string `json:"name"`
 	} `json:"photos"`
-	CurrentOpeningHours struct {
-		OpenNow *bool `json:"openNow"`
-	} `json:"currentOpeningHours"`
-	GoogleMapsURI string `json:"googleMapsUri"`
+	CurrentOpeningHours      openingHours          `json:"currentOpeningHours"`
+	RegularOpeningHours      openingHours          `json:"regularOpeningHours"`
+	GoogleMapsURI            string                `json:"googleMapsUri"`
+	InternationalPhoneNumber string                `json:"internationalPhoneNumber"`
+	NationalPhoneNumber      string                `json:"nationalPhoneNumber"`
+	WebsiteURI               string                `json:"websiteUri"`
+	EditorialSummary         struct{ Text string } `json:"editorialSummary"`
 }
 
-func (p apiPlace) toCard(lat, lng float64, photoBase string) Card {
+func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang string) Card {
 	c := Card{
 		ID:          p.ID,
 		Name:        p.DisplayName.Text,
@@ -170,7 +247,7 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string) Card {
 		PriceLevel:  priceLevel(p.PriceLevel),
 		Rating:      p.Rating,
 		RatingCount: p.UserRatingCount,
-		Cuisines:    cuisines(p.Types, p.PrimaryTypeDisp.Text),
+		Cuisines:    cuisines(p.Types, p.PrimaryTypeDisp.Text, lang),
 		DistanceM:   int(math.Round(haversineM(lat, lng, p.Location.Latitude, p.Location.Longitude))),
 		MapsURI:     p.GoogleMapsURI,
 	}
@@ -183,12 +260,28 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string) Card {
 			url.QueryEscape(p.DisplayName.Text) + "&query_place_id=" + url.QueryEscape(p.ID)
 	}
 	for i, ph := range p.Photos {
-		if i == 3 {
+		if i == maxPhotos {
 			break
 		}
-		c.PhotoURLs = append(c.PhotoURLs, photoBase+"/photo?name="+url.QueryEscape(ph.Name)+"&w=900")
+		c.PhotoURLs = append(c.PhotoURLs, photoBase+"/photo?name="+url.QueryEscape(ph.Name)+"&w=1000")
 	}
 	return c
+}
+
+func langCode(s string) string {
+	if strings.HasPrefix(strings.ToLower(s), "th") {
+		return "th"
+	}
+	return ""
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // --- mapping ---------------------------------------------------------------
@@ -255,11 +348,30 @@ var typeLabel = map[string]string{
 	"dessert_restaurant": "Dessert", "dessert_shop": "Dessert",
 }
 
-func cuisines(types []string, primary string) []string {
+var typeLabelTh = map[string]string{
+	"thai_restaurant": "ไทย", "japanese_restaurant": "ญี่ปุ่น", "chinese_restaurant": "จีน",
+	"korean_restaurant": "เกาหลี", "vietnamese_restaurant": "เวียดนาม", "indian_restaurant": "อินเดีย",
+	"italian_restaurant": "อิตาเลียน", "mexican_restaurant": "เม็กซิกัน", "french_restaurant": "ฝรั่งเศส",
+	"american_restaurant": "อเมริกัน", "seafood_restaurant": "ซีฟู้ด", "sushi_restaurant": "ซูชิ",
+	"ramen_restaurant": "ราเมง", "pizza_restaurant": "พิซซ่า", "hamburger_restaurant": "เบอร์เกอร์",
+	"barbecue_restaurant": "ปิ้งย่าง", "vegetarian_restaurant": "มังสวิรัติ", "vegan_restaurant": "วีแกน",
+	"breakfast_restaurant": "อาหารเช้า", "brunch_restaurant": "บรันช์", "cafe": "คาเฟ่",
+	"coffee_shop": "กาแฟ", "bakery": "เบเกอรี่", "bar": "บาร์", "fast_food_restaurant": "ฟาสต์ฟู้ด",
+	"fine_dining_restaurant": "ไฟน์ไดนิ่ง", "steak_house": "สเต๊ก", "ice_cream_shop": "ไอศกรีม",
+	"dessert_restaurant": "ของหวาน", "dessert_shop": "ของหวาน",
+}
+
+func cuisines(types []string, primary, lang string) []string {
+	labels := typeLabel
+	fallback := "Restaurant"
+	if lang == "th" {
+		labels = typeLabelTh
+		fallback = "ร้านอาหาร"
+	}
 	seen := map[string]bool{}
 	var out []string
 	for _, t := range types {
-		if l, ok := typeLabel[t]; ok && !seen[l] {
+		if l, ok := labels[t]; ok && !seen[l] {
 			seen[l] = true
 			out = append(out, l)
 		}
@@ -268,7 +380,7 @@ func cuisines(types []string, primary string) []string {
 		out = append(out, primary)
 	}
 	if len(out) == 0 {
-		out = append(out, "Restaurant")
+		out = append(out, fallback)
 	}
 	if len(out) > 3 {
 		out = out[:3]

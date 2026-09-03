@@ -1,19 +1,21 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Card } from "../api/client";
+import type { Card, Lang } from "../api/client";
 
 // Session + on-device state. Persisted to this device only (AsyncStorage on
 // native, localStorage on web) — no account, nothing leaves the phone, lost if
 // the app is deleted or the list is cleared.
 
 type SessionState = {
+  lang: Lang;
   categories: string[];
   radiusM: number;
   openNow: boolean;
   liked: Card[];
   hydrated: boolean;
 
+  setLang: (lang: Lang) => void;
   setFilters: (f: { categories: string[]; radiusM: number; openNow: boolean }) => void;
   addLiked: (c: Card) => void;
   removeLiked: (id: string) => void;
@@ -23,12 +25,14 @@ type SessionState = {
 export const useSession = create<SessionState>()(
   persist(
     (set) => ({
+      lang: "en",
       categories: [],
       radiusM: 1000,
       openNow: false,
       liked: [],
       hydrated: false,
 
+      setLang: (lang) => set({ lang }),
       setFilters: ({ categories, radiusM, openNow }) => set({ categories, radiusM, openNow }),
       addLiked: (c) =>
         set((s) => (s.liked.some((x) => x.id === c.id) ? s : { liked: [...s.liked, c] })),
@@ -39,6 +43,7 @@ export const useSession = create<SessionState>()(
       name: "eatrai-session-v1",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
+        lang: s.lang,
         categories: s.categories,
         radiusM: s.radiusM,
         openNow: s.openNow,
