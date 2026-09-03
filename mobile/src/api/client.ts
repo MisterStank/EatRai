@@ -28,10 +28,15 @@ export type Place = Card & {
   weekdayHours: string[]; // e.g. ["Monday: 9 AM – 10 PM", ...]
 };
 
+export type SortMode = "near" | "match";
+
 export type NearbyOpts = {
   radiusM?: number;
   categories?: string[];
   openNow?: boolean;
+  minRating?: number;
+  priceLevels?: number[];
+  sort?: SortMode;
   lang?: Lang;
   signal?: AbortSignal;
 };
@@ -47,6 +52,9 @@ export async function getNearby(lat: number, lng: number, opts: NearbyOpts = {})
   if (opts.radiusM) p.set("radius", String(opts.radiusM));
   if (opts.categories && opts.categories.length) p.set("categories", opts.categories.join(","));
   if (opts.openNow) p.set("openNow", "true");
+  if (opts.minRating) p.set("minRating", String(opts.minRating));
+  if (opts.priceLevels && opts.priceLevels.length) p.set("priceLevels", opts.priceLevels.join(","));
+  if (opts.sort === "match") p.set("sort", "match");
   if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
 
   const res = await fetch(`${BASE}/nearby?${p.toString()}`, { signal: opts.signal });

@@ -34,6 +34,9 @@ export function DeckScreen() {
   const categories = useSession((s) => s.categories);
   const radiusM = useSession((s) => s.radiusM);
   const openNow = useSession((s) => s.openNow);
+  const minRating = useSession((s) => s.minRating);
+  const priceLevels = useSession((s) => s.priceLevels);
+  const sort = useSession((s) => s.sort);
   const liked = useSession((s) => s.liked);
   const addLiked = useSession((s) => s.addLiked);
   const removeLiked = useSession((s) => s.removeLiked);
@@ -127,6 +130,9 @@ export function DeckScreen() {
         radiusM: effectiveRadius,
         categories,
         openNow,
+        minRating,
+        priceLevels,
+        sort,
         lang,
         signal: ctrl.signal,
       });
@@ -149,7 +155,7 @@ export function DeckScreen() {
       if (!ctrl.signal.aborted) setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords, hydrated, effectiveRadius, categories, openNow, lang, t]);
+  }, [coords, hydrated, effectiveRadius, categories, openNow, minRating, priceLevels, sort, lang, t]);
 
   useEffect(() => {
     load();
@@ -247,7 +253,7 @@ export function DeckScreen() {
         <View style={{ height: insets.top + space(2) }} />
         <TopBar
           locationLabel={place ?? t("nearYou")}
-          filterCount={filterCount({ categories, openNow, radiusM })}
+          filterCount={filterCount({ categories, openNow, radiusM, minRating, priceLevels })}
           onLocation={() => setShowLocation(true)}
           onFilter={() => setShowFilters(true)}
         />
@@ -333,7 +339,7 @@ export function DeckScreen() {
 
       <FilterSheet
         visible={showFilters}
-        value={{ categories, radiusM, openNow }}
+        value={{ categories, radiusM, openNow, minRating, priceLevels, sort }}
         onApply={applyFilters}
         onClose={() => setShowFilters(false)}
       />

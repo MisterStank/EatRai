@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Card, Lang } from "../api/client";
+import type { Card, Lang, SortMode } from "../api/client";
 
 // Session + on-device state. Persisted to this device only (AsyncStorage on
 // native, localStorage on web) — no account, nothing leaves the phone, lost if
@@ -9,17 +9,23 @@ import type { Card, Lang } from "../api/client";
 
 export const DEFAULT_RADIUS_M = 1000;
 
-type SessionState = {
-  lang: Lang;
+export type FilterValue = {
   categories: string[];
   radiusM: number;
   openNow: boolean;
+  minRating: number; // 0 = any
+  priceLevels: number[]; // 1..4
+  sort: SortMode;
+};
+
+type SessionState = FilterValue & {
+  lang: Lang;
   liked: Card[];
   hintSeen: boolean;
   hydrated: boolean;
 
   setLang: (lang: Lang) => void;
-  setFilters: (f: { categories: string[]; radiusM: number; openNow: boolean }) => void;
+  setFilters: (f: FilterValue) => void;
   addLiked: (c: Card) => void;
   removeLiked: (id: string) => void;
   clearLiked: () => void;
@@ -34,12 +40,16 @@ export const useSession = create<SessionState>()(
       categories: [],
       radiusM: DEFAULT_RADIUS_M,
       openNow: false,
+      minRating: 0,
+      priceLevels: [],
+      sort: "near",
       liked: [],
       hintSeen: false,
       hydrated: false,
 
       setLang: (lang) => set({ lang }),
-      setFilters: ({ categories, radiusM, openNow }) => set({ categories, radiusM, openNow }),
+      setFilters: ({ categories, radiusM, openNow, minRating, priceLevels, sort }) =>
+        set({ categories, radiusM, openNow, minRating, priceLevels, sort }),
       addLiked: (c) =>
         set((s) => (s.liked.some((x) => x.id === c.id) ? s : { liked: [...s.liked, c] })),
       removeLiked: (id) => set((s) => ({ liked: s.liked.filter((x) => x.id !== id) })),
@@ -55,6 +65,9 @@ export const useSession = create<SessionState>()(
         categories: s.categories,
         radiusM: s.radiusM,
         openNow: s.openNow,
+        minRating: s.minRating,
+        priceLevels: s.priceLevels,
+        sort: s.sort,
         liked: s.liked,
         hintSeen: s.hintSeen,
       }),
@@ -70,6 +83,10 @@ export const useSession = create<SessionState>()(
 setTimeout(() => useSession.getState().markHydrated(), 2500);
 
 export const filterCount = (
-  s: Pick<SessionState, "categories" | "openNow" | "radiusM">,
+  s: Pick<SessionState, "categories" | "openNow" | "radiusM" | "minRating" | "priceLevels">,
 ): number =>
-  s.categories.length + (s.openNow ? 1 : 0) + (s.radiusM !== DEFAULT_RADIUS_M ? 1 : 0);
+  s.categories.length +
+  (s.openNow ? 1 : 0) +
+  (s.radiusM !== DEFAULT_RADIUS_M ? 1 : 0) +
+  (s.minRating > 0 ? 1 : 0) +
+  (s.priceLevels.length > 0 ? 1 : 0);

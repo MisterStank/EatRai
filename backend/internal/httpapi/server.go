@@ -6,6 +6,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -169,14 +170,22 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	}
 	openNow := q.Get("openNow") == "true" || q.Get("openNow") == "1"
 	lang := normLang(q.Get("lang"))
+	minRating := parseRating(q.Get("minRating"))
+	priceLevels := parsePriceLevels(q.Get("priceLevels"))
+	sortMode := "near"
+	if q.Get("sort") == "match" {
+		sortMode = "match"
+	}
 
 	query := places.Query{
 		Lat: lat, Lng: lng, RadiusM: radius,
-		Categories: categories, OpenNow: openNow, Lang: lang,
-		PhotoBase: publicBase(r),
+		Categories: categories, OpenNow: openNow,
+		MinRating: minRating, PriceLevels: priceLevels, Sort: sortMode,
+		Lang: lang, PhotoBase: publicBase(r),
 	}
 
-	key := cacheKey(lat, lng, radius, categories, openNow) + "|" + lang
+	key := cacheKey(lat, lng, radius, categories, openNow) +
+		fmt.Sprintf("|r%.1f|p%v|s%s|%s", minRating, priceLevels, sortMode, lang)
 	if cached, ok := s.Cache.Get(key); ok {
 		w.Header().Set("Cache-Control", "public, max-age=120")
 		writeJSON(w, http.StatusOK, map[string]any{"cards": cached, "cached": true})
@@ -187,40 +196,13 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	if s.Mock {
 		cards = places.MockNearby(query)
 	} else {
-		typeCats, textQueries := places.SplitCategories(categories, lang)
-		runNearby := len(categories) == 0 || len(typeCats) > 0
-
-		seen := map[string]bool{}
-		if runNearby {
-			nq := query
-			nq.Categories = typeCats
-			got, err := s.Places.SearchNearby(r.Context(), nq)
-			if err != nil {
-				s.Log.Error("places search", "err", err)
-				writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
-				return
-			}
-			for _, c := range got {
-				if !seen[c.ID] {
-					seen[c.ID] = true
-					cards = append(cards, c)
-				}
-			}
+		var err error
+		cards, err = s.Places.Search(r.Context(), query)
+		if err != nil {
+			s.Log.Error("places search", "err", err)
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
+			return
 		}
-		for _, tq := range textQueries {
-			got, err := s.Places.SearchText(r.Context(), tq, query)
-			if err != nil {
-				s.Log.Error("places text search", "err", err, "q", tq)
-				continue
-			}
-			for _, c := range got {
-				if !seen[c.ID] {
-					seen[c.ID] = true
-					cards = append(cards, c)
-				}
-			}
-		}
-		sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
 	}
 
 	if cards == nil {
@@ -433,6 +415,33 @@ func cacheKey(lat, lng, radius float64, categories []string, openNow bool) strin
 
 func round3(f float64) float64 {
 	return float64(int(f*1000+0.5)) / 1000
+}
+
+// parseRating clamps a min-rating query value to [0, 5] in 0.5 steps (what
+// Google's Text Search accepts). 0 = no filter.
+func parseRating(s string) float64 {
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil || v <= 0 {
+		return 0
+	}
+	if v > 5 {
+		v = 5
+	}
+	return float64(int(v*2+0.5)) / 2
+}
+
+func parsePriceLevels(s string) []int {
+	seen := map[int]bool{}
+	var out []int
+	for _, p := range strings.Split(s, ",") {
+		n, err := strconv.Atoi(strings.TrimSpace(p))
+		if err == nil && n >= 1 && n <= 4 && !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	sort.Ints(out)
+	return out
 }
 
 func normLang(s string) string {

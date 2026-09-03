@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	searchURL     = "https://places.googleapis.com/v1/places:searchNearby"
 	searchTextURL = "https://places.googleapis.com/v1/places:searchText"
 	detailURL     = "https://places.googleapis.com/v1/places/"
 	photoMedia    = "https://places.googleapis.com/v1/%s/media"
@@ -87,70 +86,62 @@ func NewClient(key string) *Client {
 
 // Query is one nearby request.
 type Query struct {
-	Lat, Lng   float64
-	RadiusM    float64
-	Categories []string // friendly keys; see categoryTypes
-	OpenNow    bool
-	Lang       string // "" or "th" — Places languageCode
+	Lat, Lng    float64
+	RadiusM     float64
+	Categories  []string // friendly keys; see categoryQueries
+	OpenNow     bool
+	MinRating   float64 // 0 = any; Google accepts multiples of 0.5
+	PriceLevels []int   // 1..4; empty = any
+	Sort        string  // "match" = relevance; anything else = nearest
+	Lang        string  // "" or "th" — Places languageCode
 	// PhotoBase is the public base URL of this service (e.g. https://api.example
 	// or http://localhost:8080) used to build proxied photo links.
 	PhotoBase string
 }
 
-// SearchNearby calls Places and returns normalised cards, nearest first.
-func (c *Client) SearchNearby(ctx context.Context, q Query) ([]Card, error) {
-	body := map[string]any{
-		"includedTypes":  includedTypes(q.Categories),
-		"maxResultCount": 20,
-		"locationRestriction": map[string]any{
-			"circle": map[string]any{
-				"center": map[string]float64{"latitude": q.Lat, "longitude": q.Lng},
-				"radius": clampRadius(q.RadiusM),
-			},
-		},
+func (q Query) rankPreference() string {
+	if q.Sort == "match" {
+		return "RELEVANCE"
 	}
-	if lc := langCode(q.Lang); lc != "" {
-		body["languageCode"] = lc
-	}
-	reqBody, _ := json.Marshal(body)
+	return "DISTANCE"
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Goog-Api-Key", c.APIKey)
-	req.Header.Set("X-Goog-FieldMask", searchMask)
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		var e struct {
-			Error struct{ Message string } `json:"error"`
+// Search resolves a Query to swipe cards. Every category becomes a Text Search
+// (New) call — one call with a plain "restaurant" query when no category is
+// picked, otherwise one call per selected category — and the results are merged
+// and de-duped. Text Search is used (not the old type-filtered Nearby Search)
+// because it's the only endpoint that filters by rating and price server-side.
+func (c *Client) Search(ctx context.Context, q Query) ([]Card, error) {
+	type call struct{ text, typ string }
+	var calls []call
+	if qs := categoryQueries(q.Categories, q.Lang); len(qs) > 0 {
+		for _, text := range qs {
+			calls = append(calls, call{text, ""})
 		}
-		json.NewDecoder(resp.Body).Decode(&e)
-		return nil, fmt.Errorf("places %d: %s", resp.StatusCode, e.Error.Message)
+	} else {
+		calls = []call{{defaultQuery(q.Lang), "restaurant"}}
 	}
 
-	var out struct {
-		Places []apiPlace `json:"places"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
-
-	cards := make([]Card, 0, len(out.Places))
-	for _, p := range out.Places {
-		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, langCode(q.Lang))
-		if q.OpenNow && card.OpenKnown && !card.OpenNow {
-			continue
+	seen := map[string]bool{}
+	cards := make([]Card, 0, 20)
+	for _, cl := range calls {
+		got, err := c.searchText(ctx, cl.text, cl.typ, q)
+		if err != nil {
+			if len(calls) == 1 {
+				return nil, err
+			}
+			continue // one category failing shouldn't sink the whole search
 		}
-		cards = append(cards, card)
+		for _, card := range got {
+			if !seen[card.ID] {
+				seen[card.ID] = true
+				cards = append(cards, card)
+			}
+		}
 	}
-	sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
+	if q.Sort != "match" {
+		sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
+	}
 	return cards, nil
 }
 
@@ -217,13 +208,14 @@ func (c *Client) placeDetails(ctx context.Context, id, lang, mask string) (apiPl
 	return p, nil
 }
 
-// SearchText runs a free-text query ("ก๋วยเตี๋ยว", "อาหารอีสาน", …) biased to the
-// same circle as a nearby search. Used for the app's categories that Google's
-// place-type vocabulary can't express. Returns normalised cards.
-func (c *Client) SearchText(ctx context.Context, textQuery string, q Query) ([]Card, error) {
+// searchText is one Text Search (New) call: a free-text query, optionally
+// constrained to a single place type, with the query's rating / price / open /
+// sort filters applied server-side and biased to the search circle.
+func (c *Client) searchText(ctx context.Context, textQuery, includedType string, q Query) ([]Card, error) {
 	body := map[string]any{
 		"textQuery":      textQuery,
 		"maxResultCount": 20,
+		"rankPreference": q.rankPreference(),
 		"locationBias": map[string]any{
 			"circle": map[string]any{
 				"center": map[string]float64{"latitude": q.Lat, "longitude": q.Lng},
@@ -231,8 +223,17 @@ func (c *Client) SearchText(ctx context.Context, textQuery string, q Query) ([]C
 			},
 		},
 	}
+	if includedType != "" {
+		body["includedType"] = includedType
+	}
 	if q.OpenNow {
 		body["openNow"] = true
+	}
+	if q.MinRating > 0 {
+		body["minRating"] = q.MinRating
+	}
+	if levels := priceLevelEnums(q.PriceLevels); len(levels) > 0 {
+		body["priceLevels"] = levels
 	}
 	if lc := langCode(q.Lang); lc != "" {
 		body["languageCode"] = lc
@@ -435,75 +436,68 @@ func firstNonEmpty(vals ...string) string {
 
 // --- mapping ---------------------------------------------------------------
 
-// categoryTypes maps the app's friendly filter keys to Places (New) primary
-// types. Unknown keys fall back to a plain "restaurant" search.
-var categoryTypes = map[string][]string{
-	"thai":       {"thai_restaurant"},
-	"seafood":    {"seafood_restaurant"},
-	"japanese":   {"japanese_restaurant", "sushi_restaurant", "ramen_restaurant"},
-	"cafe":       {"cafe", "coffee_shop"},
-	"bar":        {"bar", "pub"},
-	"bbq":        {"barbecue_restaurant"},
-	"dessert":    {"dessert_restaurant", "ice_cream_shop", "bakery"},
-	"vegetarian": {"vegetarian_restaurant", "vegan_restaurant"},
-	"chinese":    {"chinese_restaurant"},
-	"korean":     {"korean_restaurant"},
-	"indian":     {"indian_restaurant"},
-	"italian":    {"italian_restaurant"},
-	"pizza":      {"pizza_restaurant"},
-	"burgers":    {"hamburger_restaurant"},
+// categoryQueryText maps each of the app's friendly filter keys to a Text
+// Search phrase, per language. Every category is a text query now — Text Search
+// is the only Places endpoint that also filters by rating and price.
+var categoryQueryText = map[string]map[string]string{
+	"thai":       {"en": "Thai restaurant", "th": "ร้านอาหารไทย"},
+	"isaan":      {"en": "Isaan Northeastern Thai food", "th": "อาหารอีสาน ส้มตำ"},
+	"noodles":    {"en": "noodle shop", "th": "ก๋วยเตี๋ยว บะหมี่"},
+	"street":     {"en": "street food", "th": "สตรีทฟู้ด อาหารริมทาง"},
+	"seafood":    {"en": "seafood restaurant", "th": "ร้านซีฟู้ด อาหารทะเล"},
+	"japanese":   {"en": "Japanese restaurant sushi ramen", "th": "ร้านอาหารญี่ปุ่น ซูชิ ราเมง"},
+	"cafe":       {"en": "cafe coffee shop", "th": "คาเฟ่ ร้านกาแฟ"},
+	"bar":        {"en": "bar pub", "th": "บาร์ ผับ"},
+	"bbq":        {"en": "barbecue grill mookata", "th": "ปิ้งย่าง หมูกระทะ"},
+	"dessert":    {"en": "dessert ice cream shop", "th": "ร้านของหวาน ไอศกรีม"},
+	"vegetarian": {"en": "vegetarian vegan restaurant", "th": "ร้านอาหารมังสวิรัติ เจ"},
+	"chinese":    {"en": "Chinese restaurant", "th": "ร้านอาหารจีน"},
+	"korean":     {"en": "Korean restaurant", "th": "ร้านอาหารเกาหลี"},
+	"indian":     {"en": "Indian restaurant", "th": "ร้านอาหารอินเดีย"},
+	"italian":    {"en": "Italian restaurant", "th": "ร้านอาหารอิตาเลียน"},
+	"pizza":      {"en": "pizza restaurant", "th": "ร้านพิซซ่า"},
+	"burgers":    {"en": "burger restaurant", "th": "ร้านเบอร์เกอร์"},
 }
 
-// textCategoryQueries covers the filters Google's place-type vocabulary can't
-// express — these run as free-text searches instead of type-filtered nearby
-// searches. Query text is per language.
-var textCategoryQueries = map[string]map[string]string{
-	"isaan":   {"en": "Isaan / Northeastern Thai food", "th": "อาหารอีสาน"},
-	"noodles": {"en": "noodle shop", "th": "ก๋วยเตี๋ยว"},
-	"street":  {"en": "street food", "th": "สตรีทฟู้ด อาหารริมทาง"},
+func defaultQuery(lang string) string {
+	if langCode(lang) == "th" {
+		return "ร้านอาหาร"
+	}
+	return "restaurant"
 }
 
-// SplitCategories separates friendly keys into type-filterable ones and
-// free-text ones, and returns the localized text queries for the latter.
-func SplitCategories(cats []string, lang string) (typeCats []string, textQueries []string) {
+// categoryQueries returns one localized Text Search phrase per selected
+// category. Empty in / empty out (the caller then uses defaultQuery).
+func categoryQueries(cats []string, lang string) []string {
 	l := "en"
 	if langCode(lang) == "th" {
 		l = "th"
 	}
+	var out []string
 	for _, k := range cats {
 		k = strings.ToLower(strings.TrimSpace(k))
-		if q, ok := textCategoryQueries[k]; ok {
-			textQueries = append(textQueries, q[l])
-			continue
+		if q, ok := categoryQueryText[k]; ok {
+			out = append(out, q[l])
+		} else if k != "" {
+			out = append(out, k)
 		}
-		typeCats = append(typeCats, k)
 	}
-	return typeCats, textQueries
+	return out
 }
 
-func includedTypes(categories []string) []string {
-	if len(categories) == 0 {
-		return []string{"restaurant"}
-	}
-	seen := map[string]bool{}
+func priceLevelEnums(levels []int) []string {
 	var out []string
-	for _, k := range categories {
-		ts, ok := categoryTypes[strings.ToLower(strings.TrimSpace(k))]
-		if !ok {
-			ts = []string{"restaurant"}
+	for _, l := range levels {
+		switch l {
+		case 1:
+			out = append(out, "PRICE_LEVEL_INEXPENSIVE")
+		case 2:
+			out = append(out, "PRICE_LEVEL_MODERATE")
+		case 3:
+			out = append(out, "PRICE_LEVEL_EXPENSIVE")
+		case 4:
+			out = append(out, "PRICE_LEVEL_VERY_EXPENSIVE")
 		}
-		for _, t := range ts {
-			if !seen[t] {
-				seen[t] = true
-				out = append(out, t)
-			}
-		}
-	}
-	if len(out) == 0 {
-		out = []string{"restaurant"}
-	}
-	if len(out) > 50 {
-		out = out[:50]
 	}
 	return out
 }

@@ -127,10 +127,27 @@ func MockNearby(q Query) []Card {
 		if q.OpenNow && !s.open {
 			continue
 		}
+		if q.MinRating > 0 && s.rating < q.MinRating {
+			continue
+		}
+		if len(q.PriceLevels) > 0 && !containsInt(q.PriceLevels, s.price) {
+			continue
+		}
 		cards = append(cards, s.card(dist, q.Lang))
 	}
-	sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
+	if q.Sort != "match" {
+		sort.SliceStable(cards, func(i, j int) bool { return cards[i].DistanceM < cards[j].DistanceM })
+	}
 	return cards
+}
+
+func containsInt(xs []int, v int) bool {
+	for _, x := range xs {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 // MockPlace resolves a mock id back to a spot and fakes the detail fields.

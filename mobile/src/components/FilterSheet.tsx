@@ -4,9 +4,12 @@ import { color, font, radius, space } from "../theme/tokens";
 import { CATEGORIES, RADII, catLabel } from "../lib/categories";
 import { fmtDistance } from "../lib/format";
 import { useT } from "../lib/i18n";
-import { useSession } from "../store/session";
+import { useSession, DEFAULT_RADIUS_M, type FilterValue } from "../store/session";
 
-export type Filters = { categories: string[]; radiusM: number; openNow: boolean };
+export type Filters = FilterValue;
+
+const RATINGS = [0, 3.5, 4, 4.5];
+const PRICES = [1, 2, 3, 4];
 
 export function FilterSheet({
   visible,
@@ -24,22 +27,34 @@ export function FilterSheet({
   const [cats, setCats] = useState<string[]>(value.categories);
   const [radiusM, setRadiusM] = useState<number>(value.radiusM);
   const [openNow, setOpenNow] = useState<boolean>(value.openNow);
+  const [minRating, setMinRating] = useState<number>(value.minRating);
+  const [prices, setPrices] = useState<number[]>(value.priceLevels);
+  const [sort, setSort] = useState(value.sort);
 
   useEffect(() => {
     if (visible) {
       setCats(value.categories);
       setRadiusM(value.radiusM);
       setOpenNow(value.openNow);
+      setMinRating(value.minRating);
+      setPrices(value.priceLevels);
+      setSort(value.sort);
     }
   }, [visible]);
 
   const toggle = (key: string) =>
     setCats((c) => (c.includes(key) ? c.filter((k) => k !== key) : [...c, key]));
 
+  const togglePrice = (p: number) =>
+    setPrices((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p].sort()));
+
   const reset = () => {
     setCats([]);
-    setRadiusM(1000);
+    setRadiusM(DEFAULT_RADIUS_M);
     setOpenNow(false);
+    setMinRating(0);
+    setPrices([]);
+    setSort("near");
   };
 
   return (
@@ -86,6 +101,52 @@ export function FilterSheet({
             })}
           </View>
 
+          <Text style={styles.label}>{t("minRatingLabel")}</Text>
+          <View style={styles.segmented}>
+            {RATINGS.map((r) => {
+              const on = minRating === r;
+              return (
+                <Pressable key={r} onPress={() => setMinRating(r)} style={[styles.segment, on && styles.segmentOn]}>
+                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>
+                    {r === 0 ? t("anyRating") : `★ ${r.toFixed(1)}`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.label}>{t("priceLabel")}</Text>
+          <View style={styles.chips}>
+            {PRICES.map((p) => {
+              const on = prices.includes(p);
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => togglePrice(p)}
+                  style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
+                >
+                  <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>
+                    {"฿".repeat(p)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.label}>{t("sortLabel")}</Text>
+          <View style={styles.segmented}>
+            {(["near", "match"] as const).map((mode) => {
+              const on = sort === mode;
+              return (
+                <Pressable key={mode} onPress={() => setSort(mode)} style={[styles.segment, on && styles.segmentOn]}>
+                  <Text style={[styles.segmentText, on && styles.segmentTextOn]}>
+                    {mode === "near" ? t("sortNearest") : t("sortBest")}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           <Pressable style={styles.toggleRow} onPress={() => setOpenNow((v) => !v)}>
             <Text style={styles.toggleLabel}>{t("openNowOnly")}</Text>
             <View style={[styles.track, openNow ? styles.trackOn : styles.trackOff]}>
@@ -94,7 +155,10 @@ export function FilterSheet({
           </Pressable>
         </ScrollView>
 
-        <Pressable style={styles.apply} onPress={() => onApply({ categories: cats, radiusM, openNow })}>
+        <Pressable
+          style={styles.apply}
+          onPress={() => onApply({ categories: cats, radiusM, openNow, minRating, priceLevels: prices, sort })}
+        >
           <Text style={styles.applyText}>{t("showRestaurants")}</Text>
         </Pressable>
       </View>

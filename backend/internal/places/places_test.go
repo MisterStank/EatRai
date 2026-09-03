@@ -5,32 +5,42 @@ import (
 	"testing"
 )
 
-func TestSplitCategories(t *testing.T) {
-	typeCats, textQueries := SplitCategories([]string{"thai", "noodles", "isaan", "cafe"}, "th")
-	if !reflect.DeepEqual(typeCats, []string{"thai", "cafe"}) {
-		t.Fatalf("typeCats = %v", typeCats)
+func TestCategoryQueries(t *testing.T) {
+	got := categoryQueries([]string{"thai", "noodles"}, "th")
+	want := []string{"ร้านอาหารไทย", "ก๋วยเตี๋ยว บะหมี่"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("th queries = %v, want %v", got, want)
 	}
-	if len(textQueries) != 2 {
-		t.Fatalf("want 2 text queries, got %v", textQueries)
+	if en := categoryQueries([]string{"burgers"}, ""); len(en) != 1 || en[0] != "burger restaurant" {
+		t.Fatalf("en burgers = %v", en)
 	}
-	// Thai locale should yield Thai query text.
-	if textQueries[0] != "ก๋วยเตี๋ยว" {
-		t.Fatalf("noodles th query = %q", textQueries[0])
+	if unknown := categoryQueries([]string{"franco-thai"}, ""); len(unknown) != 1 || unknown[0] != "franco-thai" {
+		t.Fatalf("unknown key should pass through: %v", unknown)
 	}
-}
-
-func TestSplitCategoriesEnglish(t *testing.T) {
-	_, textQueries := SplitCategories([]string{"street"}, "")
-	if len(textQueries) != 1 || textQueries[0] != "street food" {
-		t.Fatalf("street en query = %v", textQueries)
+	if none := categoryQueries(nil, ""); none != nil {
+		t.Fatalf("no categories -> %v", none)
 	}
 }
 
-func TestIncludedTypesFallback(t *testing.T) {
-	if got := includedTypes(nil); !reflect.DeepEqual(got, []string{"restaurant"}) {
-		t.Fatalf("empty -> %v", got)
+func TestDefaultQuery(t *testing.T) {
+	if defaultQuery("th") != "ร้านอาหาร" || defaultQuery("") != "restaurant" {
+		t.Fatal("bad default query")
 	}
-	if got := includedTypes([]string{"totally-unknown"}); !reflect.DeepEqual(got, []string{"restaurant"}) {
-		t.Fatalf("unknown -> %v", got)
+}
+
+func TestPriceLevelEnums(t *testing.T) {
+	got := priceLevelEnums([]int{1, 3, 9})
+	want := []string{"PRICE_LEVEL_INEXPENSIVE", "PRICE_LEVEL_EXPENSIVE"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("enums = %v, want %v", got, want)
+	}
+}
+
+func TestRankPreference(t *testing.T) {
+	if (Query{Sort: "match"}).rankPreference() != "RELEVANCE" {
+		t.Fatal("match -> RELEVANCE")
+	}
+	if (Query{}).rankPreference() != "DISTANCE" {
+		t.Fatal("default -> DISTANCE")
 	}
 }
