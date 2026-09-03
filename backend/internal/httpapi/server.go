@@ -38,9 +38,13 @@ func (s *Server) Router() http.Handler {
 		MaxAge:           300,
 	}))
 
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	// NB: not /healthz or /statusz — Google Cloud Run's frontend reserves the
+	// "*z" health/status paths and never routes them to the container.
+	health := func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "mock": s.Mock})
-	})
+	}
+	r.Get("/status", health)
+	r.Get("/healthcheck", health)
 	r.Get("/nearby", s.handleNearby)
 	r.Get("/photo", s.handlePhoto)
 	return r

@@ -49,7 +49,7 @@ Full runbook is in `docs/DEPLOYMENT.md` (kept local, not in this repo).
 ## Backend API
 
 ```
-GET /healthz                                        -> {ok, mock}
+GET /status                                         -> {ok, mock}
 GET /nearby?lat&lng&radius&categories=thai,cafe&openNow=true
                                                     -> {cards: [Card]}
 GET /photo?name=places/<id>/photos/<id>&w=900       -> image bytes (key stays server-side)
@@ -72,7 +72,7 @@ backend/
     config/           env config
     places/           Places (New) client + normalisation + curated mock data
     cache/            in-memory TTL cache
-    httpapi/          chi router: /healthz, /nearby, /photo
+    httpapi/          chi router: /status, /nearby, /photo
 mobile/
   src/
     api/client.ts     getNearby()
