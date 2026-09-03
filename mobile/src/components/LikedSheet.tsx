@@ -3,7 +3,7 @@ import { Alert, Image, Modal, Platform, Pressable, ScrollView, Share, StyleSheet
 import * as Clipboard from "expo-clipboard";
 import { Feather } from "@expo/vector-icons";
 import { color, font, radius, space } from "../theme/tokens";
-import { fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import { fmtCuisines, fmtDistance, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { buildShareURL } from "../lib/sharing";
@@ -84,7 +84,7 @@ export function LikedSheet({
                     {c.name}
                   </Text>
                   <Text style={styles.rowSub} numberOfLines={1}>
-                    {[fmtPrice(c.priceLevel), fmtCuisines(c.cuisines), fmtDistance(c.distanceM, lang)]
+                    {[fmtPriceRange(c.priceRange), fmtCuisines(c.cuisines), fmtDistance(c.distanceM, lang)]
                       .filter(Boolean)
                       .join(" · ")}
                   </Text>

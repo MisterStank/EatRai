@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,17 +24,17 @@ const (
 	detailURL     = "https://places.googleapis.com/v1/places/"
 	photoMedia    = "https://places.googleapis.com/v1/%s/media"
 	searchMask    = "places.id,places.displayName,places.formattedAddress,places.location," +
-		"places.priceLevel,places.rating,places.userRatingCount,places.types," +
+		"places.priceLevel,places.priceRange,places.rating,places.userRatingCount,places.types," +
 		"places.primaryTypeDisplayName,places.photos,places.currentOpeningHours.openNow," +
 		"places.googleMapsUri"
-	detailMask = "id,displayName,formattedAddress,location,priceLevel,rating," +
+	detailMask = "id,displayName,formattedAddress,location,priceLevel,priceRange,rating," +
 		"userRatingCount,types,primaryTypeDisplayName,photos,googleMapsUri," +
 		"currentOpeningHours.openNow,currentOpeningHours.weekdayDescriptions," +
 		"regularOpeningHours.weekdayDescriptions,internationalPhoneNumber," +
 		"nationalPhoneNumber,websiteUri,editorialSummary"
 	// liteDetailMask is the Pro-tier subset used to resolve a shared list — no
 	// phone/website/summary (which push Place Details into the pricier tier).
-	liteDetailMask = "id,displayName,formattedAddress,location,priceLevel,rating," +
+	liteDetailMask = "id,displayName,formattedAddress,location,priceLevel,priceRange,rating," +
 		"userRatingCount,types,primaryTypeDisplayName,photos,googleMapsUri," +
 		"currentOpeningHours.openNow"
 
@@ -41,20 +42,29 @@ const (
 	detailPhotos = 10
 )
 
+// PriceRange is a per-person spend band from Google (e.g. ฿200–400). Nil when
+// Google has no range for the place.
+type PriceRange struct {
+	Start    int    `json:"start,omitempty"` // 0 = no lower bound given
+	End      int    `json:"end,omitempty"`   // 0 = no upper bound given
+	Currency string `json:"currency"`        // ISO 4217, e.g. "THB"
+}
+
 // Card is what the app renders. Stable JSON shape shared with the mobile client.
 type Card struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Address     string   `json:"address"`
-	PriceLevel  int      `json:"priceLevel"` // 0..4, 0 = unknown
-	Rating      float64  `json:"rating"`
-	RatingCount int      `json:"ratingCount"`
-	PhotoURLs   []string `json:"photoUrls"`
-	Cuisines    []string `json:"cuisines"`
-	DistanceM   int      `json:"distanceM"`
-	OpenNow     bool     `json:"openNow"`
-	OpenKnown   bool     `json:"openKnown"`
-	MapsURI     string   `json:"mapsUri"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Address     string      `json:"address"`
+	PriceLevel  int         `json:"priceLevel"` // 0..4, 0 = unknown (kept for the price filter)
+	PriceRange  *PriceRange `json:"priceRange,omitempty"`
+	Rating      float64     `json:"rating"`
+	RatingCount int         `json:"ratingCount"`
+	PhotoURLs   []string    `json:"photoUrls"`
+	Cuisines    []string    `json:"cuisines"`
+	DistanceM   int         `json:"distanceM"`
+	OpenNow     bool        `json:"openNow"`
+	OpenKnown   bool        `json:"openKnown"`
+	MapsURI     string      `json:"mapsUri"`
 }
 
 // Place is the detail payload from /place — a Card plus contact / hours info.
@@ -345,17 +355,27 @@ type openingHours struct {
 	WeekdayDescriptions []string `json:"weekdayDescriptions"`
 }
 
+// apiMoney is Google's Money type: units is a string-encoded int64.
+type apiMoney struct {
+	CurrencyCode string `json:"currencyCode"`
+	Units        string `json:"units"`
+}
+
 type apiPlace struct {
 	ID               string                                `json:"id"`
 	DisplayName      struct{ Text string }                 `json:"displayName"`
 	FormattedAddress string                                `json:"formattedAddress"`
 	Location         struct{ Latitude, Longitude float64 } `json:"location"`
 	PriceLevel       string                                `json:"priceLevel"`
-	Rating           float64                               `json:"rating"`
-	UserRatingCount  int                                   `json:"userRatingCount"`
-	Types            []string                              `json:"types"`
-	PrimaryTypeDisp  struct{ Text string }                 `json:"primaryTypeDisplayName"`
-	Photos           []struct {
+	PriceRange       *struct {
+		StartPrice *apiMoney `json:"startPrice"`
+		EndPrice   *apiMoney `json:"endPrice"`
+	} `json:"priceRange"`
+	Rating          float64               `json:"rating"`
+	UserRatingCount int                   `json:"userRatingCount"`
+	Types           []string              `json:"types"`
+	PrimaryTypeDisp struct{ Text string } `json:"primaryTypeDisplayName"`
+	Photos          []struct {
 		Name string `json:"name"`
 	} `json:"photos"`
 	CurrentOpeningHours      openingHours          `json:"currentOpeningHours"`
@@ -383,6 +403,7 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang
 		c.OpenKnown = true
 		c.OpenNow = *p.CurrentOpeningHours.OpenNow
 	}
+	c.PriceRange = parsePriceRange(p)
 	if c.MapsURI == "" {
 		c.MapsURI = "https://www.google.com/maps/search/?api=1&query=" +
 			url.QueryEscape(p.DisplayName.Text) + "&query_place_id=" + url.QueryEscape(p.ID)
@@ -538,6 +559,28 @@ func cuisines(types []string, primary, lang string) []string {
 		out = out[:3]
 	}
 	return out
+}
+
+func parsePriceRange(p apiPlace) *PriceRange {
+	if p.PriceRange == nil {
+		return nil
+	}
+	units := func(m *apiMoney) (int, string) {
+		if m == nil {
+			return 0, ""
+		}
+		n, _ := strconv.Atoi(m.Units)
+		return n, m.CurrencyCode
+	}
+	start, cur := units(p.PriceRange.StartPrice)
+	end, cur2 := units(p.PriceRange.EndPrice)
+	if cur == "" {
+		cur = cur2
+	}
+	if start == 0 && end == 0 {
+		return nil
+	}
+	return &PriceRange{Start: start, End: end, Currency: cur}
 }
 
 func priceLevel(s string) int {

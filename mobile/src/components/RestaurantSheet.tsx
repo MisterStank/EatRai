@@ -13,7 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { getPlace, type Card, type Place } from "../api/client";
 import { color, font, radius, space } from "../theme/tokens";
-import { fmtCount, fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import { fmtCount, fmtCuisines, fmtDistance, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { isTodayLine, todayHours } from "../lib/hours";
@@ -85,7 +85,7 @@ export function RestaurantSheet({
             <View style={styles.body}>
               <Text style={styles.name}>{view.name}</Text>
               <Text style={styles.meta}>
-                {[fmtPrice(view.priceLevel), fmtCuisines(view.cuisines)].filter(Boolean).join("  ·  ")}
+                {[fmtPriceRange(view.priceRange), fmtCuisines(view.cuisines)].filter(Boolean).join("  ·  ")}
               </Text>
 
               <View style={styles.chips}>

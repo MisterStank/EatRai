@@ -50,6 +50,21 @@ var mockSpots = []mockSpot{
 	{"Charmgang", "Charoen Krung", []string{"Thai"}, []string{"thai"}, 3, 4.7, 1700, true},
 }
 
+// mockPriceRange fakes a per-person THB band from the mock price level. Level 3
+// is left without a range so the "range or nothing" UI is exercised.
+func mockPriceRange(level int) *PriceRange {
+	switch level {
+	case 1:
+		return &PriceRange{Start: 80, End: 250, Currency: "THB"}
+	case 2:
+		return &PriceRange{Start: 250, End: 600, Currency: "THB"}
+	case 4:
+		return &PriceRange{Start: 1200, End: 3000, Currency: "THB"}
+	default:
+		return nil
+	}
+}
+
 func mockPhotos(name string, n int) []string {
 	out := make([]string, 0, n)
 	for i := 0; i < n; i++ {
@@ -82,6 +97,7 @@ func (s mockSpot) card(dist int, lang string) Card {
 		Name:        s.name,
 		Address:     s.area + ", Bangkok",
 		PriceLevel:  s.price,
+		PriceRange:  mockPriceRange(s.price),
 		Rating:      s.rating,
 		RatingCount: s.count,
 		Cuisines:    cz,

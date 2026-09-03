@@ -14,7 +14,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { color, font, radius, space } from "../theme/tokens";
-import { fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import { fmtCuisines, fmtDistance, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import type { Card } from "../api/client";
@@ -172,7 +172,7 @@ export function SwipeCard({
           {isTop ? <Feather name="chevron-up" size={18} color="rgba(255,255,255,0.7)" /> : null}
         </View>
         <Text style={styles.meta} numberOfLines={1}>
-          {[fmtPrice(card.priceLevel), fmtCuisines(card.cuisines)].filter(Boolean).join("  ·  ")}
+          {[fmtPriceRange(card.priceRange), fmtCuisines(card.cuisines)].filter(Boolean).join("  ·  ")}
         </Text>
         <View style={styles.chips}>
           <View style={styles.chip}>

@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { getList, type Card } from "../api/client";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { color, font, radius, space } from "../theme/tokens";
-import { fmtCuisines, fmtPrice, fmtRating } from "../lib/format";
+import { fmtCuisines, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 
@@ -63,7 +63,7 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
                   {p.name}
                 </Text>
                 <Text style={styles.rowSub} numberOfLines={1}>
-                  {[fmtPrice(p.priceLevel), fmtCuisines(p.cuisines)].filter(Boolean).join(" · ")}
+                  {[fmtPriceRange(p.priceRange), fmtCuisines(p.cuisines)].filter(Boolean).join(" · ")}
                 </Text>
                 {p.rating > 0 || p.openKnown ? (
                   <Text style={[styles.rowMeta, { color: p.openNow ? color.like : color.inkFaint }]} numberOfLines={1}>

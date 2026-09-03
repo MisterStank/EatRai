@@ -2,11 +2,14 @@ const BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export type Lang = "en" | "th";
 
+export type PriceRange = { start?: number; end?: number; currency: string };
+
 export type Card = {
   id: string;
   name: string;
   address: string;
-  priceLevel: number; // 0..4
+  priceLevel: number; // 0..4 — kept for the price filter, not displayed
+  priceRange?: PriceRange | null;
   rating: number;
   ratingCount: number;
   photoUrls: string[];

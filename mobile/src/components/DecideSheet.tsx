@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Card } from "../api/client";
 import { color, font, radius, space } from "../theme/tokens";
-import { fmtCuisines, fmtDistance, fmtPrice, fmtRating } from "../lib/format";
+import { fmtCuisines, fmtDistance, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { weightedPick } from "../lib/decide";
@@ -68,7 +68,7 @@ export function DecideSheet({
           <View style={styles.chips}>
             <Chip>{fmtDistance(pick.distanceM, lang)}</Chip>
             {pick.rating > 0 ? <Chip icon="star">{fmtRating(pick.rating)}</Chip> : null}
-            {fmtPrice(pick.priceLevel) ? <Chip>{fmtPrice(pick.priceLevel)}</Chip> : null}
+            {fmtPriceRange(pick.priceRange) ? <Chip>{fmtPriceRange(pick.priceRange)}</Chip> : null}
             {fmtCuisines(pick.cuisines) ? <Chip>{fmtCuisines(pick.cuisines)}</Chip> : null}
           </View>
 
