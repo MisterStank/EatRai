@@ -189,7 +189,12 @@ export function SwipeCard({
               <View style={[styles.dot, { backgroundColor: card.openNow ? color.likeBright : color.gold }]} />
               <Text style={styles.chipText}>{card.openNow ? t("open") : t("closed")}</Text>
             </View>
-          ) : null}
+          ) : (
+            <View style={styles.chip}>
+              <View style={[styles.dot, { backgroundColor: color.inkFaint }]} />
+              <Text style={styles.chipText}>{t("hoursUnknown")}</Text>
+            </View>
+          )}
         </View>
       </View>
     </Animated.View>

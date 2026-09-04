@@ -105,7 +105,12 @@ export function RestaurantSheet({
                       {view.openNow ? t("open") : t("closed")}
                     </Text>
                   </View>
-                ) : null}
+                ) : (
+                  <View style={styles.chip}>
+                    <View style={[styles.dot, { backgroundColor: color.inkFaint }]} />
+                    <Text style={styles.chipText}>{t("hoursUnknown")}</Text>
+                  </View>
+                )}
                 {view.distanceM > 0 ? (
                   <View style={styles.chip}>
                     <Feather name="map-pin" size={12} color={color.inkSoft} />

@@ -840,6 +840,8 @@ var typeLabel = map[string]string{
 	"coffee_shop": "Coffee", "bakery": "Bakery", "bar": "Bar", "fast_food_restaurant": "Fast food",
 	"fine_dining_restaurant": "Fine dining", "steak_house": "Steakhouse", "ice_cream_shop": "Ice cream",
 	"dessert_restaurant": "Dessert", "dessert_shop": "Dessert",
+	"asian_restaurant": "Asian", "buffet_restaurant": "Buffet", "burmese_restaurant": "Burmese",
+	"hot_pot_restaurant": "Hot pot", "middle_eastern_restaurant": "Middle Eastern", "noodle_shop": "Noodles",
 }
 
 var typeLabelTh = map[string]string{
@@ -853,6 +855,8 @@ var typeLabelTh = map[string]string{
 	"coffee_shop": "กาแฟ", "bakery": "เบเกอรี่", "bar": "บาร์", "fast_food_restaurant": "ฟาสต์ฟู้ด",
 	"fine_dining_restaurant": "ไฟน์ไดนิ่ง", "steak_house": "สเต๊ก", "ice_cream_shop": "ไอศกรีม",
 	"dessert_restaurant": "ของหวาน", "dessert_shop": "ของหวาน",
+	"asian_restaurant": "อาหารเอเชีย", "buffet_restaurant": "บุฟเฟต์", "burmese_restaurant": "พม่า",
+	"hot_pot_restaurant": "หม้อไฟ", "middle_eastern_restaurant": "ตะวันออกกลาง", "noodle_shop": "ก๋วยเตี๋ยว",
 }
 
 func cuisines(types []string, primary, lang string) []string {
@@ -870,7 +874,10 @@ func cuisines(types []string, primary, lang string) []string {
 			out = append(out, l)
 		}
 	}
-	if len(out) == 0 && primary != "" {
+	if len(out) == 0 && primary != "" && lang != "th" {
+		// Google's raw display name is only safe to show in English mode —
+		// showing it in Thai mode would leak untranslated English into an
+		// otherwise-Thai UI, so Thai always falls through to the generic label.
 		out = append(out, primary)
 	}
 	if len(out) == 0 {

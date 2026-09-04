@@ -88,13 +88,17 @@ export function LikedSheet({
                       .filter(Boolean)
                       .join(" · ")}
                   </Text>
-                  {c.rating > 0 || c.openKnown ? (
-                    <Text style={[styles.rowMeta, { color: c.openNow ? color.like : color.inkFaint }]} numberOfLines={1}>
-                      {[c.rating > 0 ? `★ ${fmtRating(c.rating)}` : "", c.openKnown ? (c.openNow ? t("open") : t("closed")) : ""]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </Text>
-                  ) : null}
+                  <Text
+                    style={[styles.rowMeta, { color: c.openKnown && c.openNow ? color.like : color.inkFaint }]}
+                    numberOfLines={1}
+                  >
+                    {[
+                      c.rating > 0 ? `★ ${fmtRating(c.rating)}` : "",
+                      c.openKnown ? (c.openNow ? t("open") : t("closed")) : t("hoursUnknown"),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={color.inkFaint} style={{ marginLeft: space(1) }} />
               </Pressable>

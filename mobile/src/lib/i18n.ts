@@ -96,6 +96,7 @@ const en = {
   // card / status
   open: "Open now",
   closed: "Closed",
+  hoursUnknown: "Hours unknown",
   yourTaste: "LIKE",
   pass: "NOPE",
 
@@ -230,6 +231,7 @@ const th: Record<Key, string> = {
 
   open: "เปิดอยู่",
   closed: "ปิดอยู่",
+  hoursUnknown: "ไม่มีข้อมูลเวลาทำการ",
   yourTaste: "ชอบ",
   pass: "ผ่าน",
 
