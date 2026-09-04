@@ -15,6 +15,7 @@ import { ActionBar } from "../components/ActionBar";
 import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
+import { HelpSheet } from "../components/HelpSheet";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { MapLocationScreen } from "../components/MapLocationScreen";
 import { DecideSheet } from "../components/DecideSheet";
@@ -60,6 +61,7 @@ export function DeckScreen() {
   const [showLocation, setShowLocation] = useState(false);
   const [showDecide, setShowDecide] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
   const history = useRef<{ card: Card; dir: SwipeDir }[]>([]);
@@ -231,8 +233,13 @@ export function DeckScreen() {
   kbd.current = { resolve, undo, openDetail: () => current && setDetail(current) };
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const anyModal = showFilters || showLiked || showLocation || showDecide || !!detail || showHint;
+    const anyModal =
+      showFilters || showLiked || showLocation || showDecide || !!detail || showHint || showHelp;
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "?" && !anyModal) {
+        setShowHelp(true);
+        return;
+      }
       if (anyModal) return;
       if (e.key === "ArrowLeft") kbd.current.resolve("nope");
       else if (e.key === "ArrowRight") kbd.current.resolve("like");
@@ -241,7 +248,7 @@ export function DeckScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint]);
+  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp]);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dragX.value, [40, 130], [0, 0.55], Extrapolation.CLAMP),
@@ -263,6 +270,7 @@ export function DeckScreen() {
           filterCount={filterCount({ categories, openNow, radiusM, minRating, priceLevels })}
           onLocation={() => setShowLocation(true)}
           onFilter={() => setShowFilters(true)}
+          onHelp={() => setShowHelp(true)}
         />
 
         <View style={[styles.deck, { marginBottom: insets.bottom + space(38) }]}>
@@ -357,6 +365,7 @@ export function DeckScreen() {
         onClear={clearLiked}
         onClose={() => setShowLiked(false)}
       />
+      <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
       <MapLocationScreen
         visible={showLocation}
         initial={coords}

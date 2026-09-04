@@ -34,7 +34,8 @@ const en = {
   tryAgain: "Try again",
   startOver: "Widen the search",
   seeYourN: "See your {n}",
-  nLiked: "{n} liked",
+  nLiked: "See your {n} liked places",
+  howToUse: "How to use",
 
   // decide
   decideForMe: "Decide for me",
@@ -59,6 +60,24 @@ const en = {
   // hint
   swipeHint: "Swipe to choose. Tap the photo to see more, tap the name for details.",
   gotIt: "Got it",
+
+  // help sheet
+  helpTitle: "How to use",
+  helpIntro: "Find somewhere to eat in a few swipes.",
+  helpSwipeTitle: "Swipe or tap",
+  helpSwipeBody: "Swipe right to save a place, left to skip. Or use the buttons at the bottom.",
+  helpMoreTitle: "See more",
+  helpMoreBody: "Tap the photo to flip through pictures. Tap the name for details, hours and directions.",
+  helpUndoTitle: "Undo",
+  helpUndoBody: "Hit the back arrow to take back your last swipe.",
+  helpAreaTitle: "Change the area",
+  helpAreaBody: "Tap the location pill up top to search anywhere or drop a pin on the map.",
+  helpFiltersTitle: "Filters",
+  helpFiltersBody: "Tap the slider icon to set cuisine, distance, rating, price and open-now.",
+  helpDecideTitle: "Can't decide?",
+  helpDecideBody: "\"Decide for me\" picks one of your saved places at random.",
+  helpListTitle: "Your list",
+  helpListBody: "Saved places live on this device only — not synced, and cleared if you delete the app.",
 
   // card / status
   open: "Open now",
@@ -100,6 +119,7 @@ const en = {
   a11yLike: "Like",
   a11yDirections: "Directions",
   a11yFilters: "Filters",
+  a11yHelp: "How to use",
   a11yLanguage: "Switch language",
   a11yDecide: "Decide for me",
   a11yPhotoNext: "Next photo",
@@ -139,7 +159,8 @@ const th: Record<Key, string> = {
   tryAgain: "ลองอีกครั้ง",
   startOver: "ขยายพื้นที่ค้นหา",
   seeYourN: "ดู {n} ร้านที่ชอบ",
-  nLiked: "ชอบ {n} ร้าน",
+  nLiked: "ดู {n} ร้านที่ชอบ",
+  howToUse: "วิธีใช้",
 
   decideForMe: "เลือกให้เลย",
   decideFromSaved: "เลือกให้จาก {n} ร้านที่บันทึก",
@@ -161,6 +182,23 @@ const th: Record<Key, string> = {
 
   swipeHint: "ปัดเพื่อเลือก แตะรูปเพื่อดูเพิ่ม แตะชื่อเพื่อดูรายละเอียด",
   gotIt: "เข้าใจแล้ว",
+
+  helpTitle: "วิธีใช้",
+  helpIntro: "หาร้านกินได้ในไม่กี่ปัด",
+  helpSwipeTitle: "ปัดหรือแตะ",
+  helpSwipeBody: "ปัดขวาเพื่อบันทึกร้าน ปัดซ้ายเพื่อข้าม หรือใช้ปุ่มด้านล่าง",
+  helpMoreTitle: "ดูเพิ่มเติม",
+  helpMoreBody: "แตะรูปเพื่อดูรูปอื่น แตะชื่อร้านเพื่อดูรายละเอียด เวลาเปิด และเส้นทาง",
+  helpUndoTitle: "ย้อนกลับ",
+  helpUndoBody: "แตะปุ่มลูกศรย้อนกลับเพื่อยกเลิกการปัดครั้งล่าสุด",
+  helpAreaTitle: "เปลี่ยนพื้นที่",
+  helpAreaBody: "แตะป้ายตำแหน่งด้านบนเพื่อค้นหาพื้นที่อื่นหรือปักหมุดบนแผนที่",
+  helpFiltersTitle: "ตัวกรอง",
+  helpFiltersBody: "แตะไอคอนสไลเดอร์เพื่อตั้งประเภทอาหาร ระยะทาง คะแนน ราคา และร้านที่เปิดอยู่",
+  helpDecideTitle: "เลือกไม่ถูก?",
+  helpDecideBody: "“เลือกให้เลย” จะสุ่มร้านหนึ่งจากร้านที่คุณบันทึกไว้",
+  helpListTitle: "รายการของคุณ",
+  helpListBody: "ร้านที่บันทึกไว้จะอยู่ในเครื่องนี้เท่านั้น ไม่ซิงก์ และจะหายเมื่อลบแอป",
 
   open: "เปิดอยู่",
   closed: "ปิดอยู่",
@@ -197,6 +235,7 @@ const th: Record<Key, string> = {
   a11yLike: "ชอบ",
   a11yDirections: "เส้นทาง",
   a11yFilters: "ตัวกรอง",
+  a11yHelp: "วิธีใช้",
   a11yLanguage: "เปลี่ยนภาษา",
   a11yDecide: "เลือกให้เลย",
   a11yPhotoNext: "รูปถัดไป",

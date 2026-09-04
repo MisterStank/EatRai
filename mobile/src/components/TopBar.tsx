@@ -10,11 +10,13 @@ export function TopBar({
   filterCount,
   onLocation,
   onFilter,
+  onHelp,
 }: {
   locationLabel: string;
   filterCount: number;
   onLocation: () => void;
   onFilter: () => void;
+  onHelp: () => void;
 }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
@@ -31,6 +33,16 @@ export function TopBar({
       </Pressable>
 
       <View style={styles.right}>
+        <Pressable
+          onPress={onHelp}
+          style={styles.helpBtn}
+          hitSlop={6}
+          accessibilityLabel={t("a11yHelp")}
+        >
+          <Feather name="help-circle" size={15} color={color.ink} />
+          <Text style={styles.helpText}>{t("howToUse")}</Text>
+        </Pressable>
+
         <Pressable
           onPress={() => setLang(lang === "en" ? "th" : "en")}
           style={styles.langBtn}
@@ -86,6 +98,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(2),
   },
   langText: { fontFamily: font.bodyBold, fontSize: 13, color: color.ink },
+  helpBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(1.25),
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.line,
+    paddingHorizontal: space(2.75),
+  },
+  helpText: { fontFamily: font.bodySemi, fontSize: 12.5, color: color.ink },
   filterBtn: {
     width: 44,
     height: 44,
