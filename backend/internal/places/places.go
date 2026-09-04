@@ -290,11 +290,12 @@ func (c *Client) FetchPhoto(ctx context.Context, name string, maxWidth int) (io.
 	if maxWidth <= 0 || maxWidth > 1600 {
 		maxWidth = 900
 	}
-	u := fmt.Sprintf(photoMedia, name) + fmt.Sprintf("?maxWidthPx=%d&key=%s", maxWidth, url.QueryEscape(c.APIKey))
+	u := fmt.Sprintf(photoMedia, name) + fmt.Sprintf("?maxWidthPx=%d", maxWidth)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, "", err
 	}
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, "", err

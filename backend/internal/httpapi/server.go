@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -72,7 +73,15 @@ func (s *Server) Router() http.Handler {
 		r.Get("/reverse", s.handleReverse)
 	})
 
-	r.Get("/photo", s.handlePhoto)
+	// /photo is loaded via <img src>, which browsers send without an Origin
+	// header — checkOrigin would block it, so it can't sit in the group above.
+	// It still costs a paid Places Photo API call per hit, so it needs the rate
+	// limiter on its own (it was previously registered with neither, i.e.
+	// completely unprotected).
+	r.Group(func(r chi.Router) {
+		r.Use(s.rateLimit)
+		r.Get("/photo", s.handlePhoto)
+	})
 	return r
 }
 
@@ -131,9 +140,14 @@ func (s *Server) originAllowed(r *http.Request) bool {
 }
 
 func clientIP(r *http.Request) string {
+	// Cloud Run's frontend APPENDS the real client IP to any X-Forwarded-For the
+	// client already sent — it never removes what the client supplied. So the
+	// LAST entry is the one Google's infra vouches for; anything earlier in the
+	// list (including the first, which older code here used to trust) is
+	// attacker-controlled and trivially spoofable to dodge the rate limiter.
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.IndexByte(xff, ','); i > 0 {
-			return strings.TrimSpace(xff[:i])
+		if i := strings.LastIndexByte(xff, ','); i >= 0 {
+			return strings.TrimSpace(xff[i+1:])
 		}
 		return strings.TrimSpace(xff)
 	}
@@ -442,9 +456,15 @@ func (s *Server) handleReverse(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
+// photoNameRe matches exactly Google's photo resource name shape
+// ("places/<id>/photos/<id>") — no extra segments, no "..", "?", "#", or other
+// characters that could redirect the outbound request to a different path once
+// concatenated into the Places Photo URL.
+var photoNameRe = regexp.MustCompile(`^places/[A-Za-z0-9_-]+/photos/[A-Za-z0-9_-]+$`)
+
 func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
-	if !strings.HasPrefix(name, "places/") || !strings.Contains(name, "/photos/") {
+	if !photoNameRe.MatchString(name) {
 		http.Error(w, "bad photo name", http.StatusBadRequest)
 		return
 	}

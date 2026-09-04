@@ -65,13 +65,17 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
                 <Text style={styles.rowSub} numberOfLines={1}>
                   {[fmtPriceRange(p.priceRange), fmtCuisines(p.cuisines)].filter(Boolean).join(" · ")}
                 </Text>
-                {p.rating > 0 || p.openKnown ? (
-                  <Text style={[styles.rowMeta, { color: p.openNow ? color.like : color.inkFaint }]} numberOfLines={1}>
-                    {[p.rating > 0 ? `★ ${fmtRating(p.rating)}` : "", p.openKnown ? (p.openNow ? t("open") : t("closed")) : ""]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </Text>
-                ) : null}
+                <Text
+                  style={[styles.rowMeta, { color: p.openKnown && p.openNow ? color.like : color.inkFaint }]}
+                  numberOfLines={1}
+                >
+                  {[
+                    p.rating > 0 ? `★ ${fmtRating(p.rating)}` : "",
+                    p.openKnown ? (p.openNow ? t("open") : t("closed")) : t("hoursUnknown"),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
               </View>
               <Feather name="chevron-right" size={20} color={color.inkFaint} />
             </Pressable>
