@@ -3,8 +3,8 @@ import { useSession } from "../store/session";
 import type { Lang } from "../api/client";
 
 const en = {
-  langLabel: "ไทย",
-  otherLangLabel: "TH",
+  langLabel: "EN",
+  otherLangLabel: "ไทย",
 
   nearYou: "Near you",
 

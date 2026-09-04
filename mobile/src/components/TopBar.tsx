@@ -49,7 +49,7 @@ export function TopBar({
           hitSlop={6}
           accessibilityLabel={t("a11yLanguage")}
         >
-          <Text style={styles.langText}>{lang === "en" ? "ไทย" : "EN"}</Text>
+          <Text style={styles.langText}>{lang === "en" ? "EN" : "TH"}</Text>
         </Pressable>
 
         <Pressable onPress={onFilter} style={styles.filterBtn} hitSlop={6} accessibilityLabel={t("a11yFilters")}>
