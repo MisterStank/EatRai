@@ -9,6 +9,10 @@ mobile/node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/*.log
+mobile/coverage/
+
+# go coverage output
+*.out
 
 # misc
 .DS_Store
