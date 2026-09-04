@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,9 +20,9 @@ import (
 )
 
 const (
+	searchNearbyURL = "https://places.googleapis.com/v1/places:searchNearby"
 	searchTextURL   = "https://places.googleapis.com/v1/places:searchText"
 	autocompleteURL = "https://places.googleapis.com/v1/places:autocomplete"
-	geocodeAPIURL   = "https://maps.googleapis.com/maps/api/geocode/json"
 	detailURL       = "https://places.googleapis.com/v1/places/"
 	photoMedia      = "https://places.googleapis.com/v1/%s/media"
 	searchMask      = "places.id,places.displayName,places.formattedAddress,places.location," +
@@ -474,85 +475,205 @@ func (c *Client) Autocomplete(ctx context.Context, input, token, lang string, la
 	return sugs, nil
 }
 
-// Reverse turns a coordinate into a short "where am I" label via the Geocoding
-// API, favouring the names Bangkok navigates by: the nearest BTS/MRT station,
-// then a named landmark, then the street or neighbourhood. Empty string only if
-// Geocoding returns nothing usable.
+// Reverse names a pin by the place around it. Google's per-place type data for
+// Bangkok is too noisy to trust, but two signals are reliable: the venue that
+// the surrounding businesses all belong to ("After You (Siam Paragon)",
+// "U.S. POLO ASSN. - SIAM PARAGON" → "Siam Paragon"), and the nearest rail
+// station (the city's actual mental map). Empty string when neither is clear.
 func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (string, error) {
-	u := fmt.Sprintf("%s?latlng=%f,%f&key=%s", geocodeAPIURL, lat, lng, url.QueryEscape(c.APIKey))
-	if lc := langCode(lang); lc != "" {
-		u += "&language=" + lc
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var out struct {
-		Status  string `json:"status"`
-		Results []struct {
-			FormattedAddress  string   `json:"formatted_address"`
-			Types             []string `json:"types"`
-			AddressComponents []struct {
-				LongName string   `json:"long_name"`
-				Types    []string `json:"types"`
-			} `json:"address_components"`
-		} `json:"results"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
-	}
-	if out.Status != "OK" || len(out.Results) == 0 {
-		return "", nil
-	}
-
-	has := func(types []string, want ...string) bool {
-		for _, t := range types {
-			for _, w := range want {
-				if t == w {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	// 1. nearest rail/transit station — how locals give directions.
-	for _, r := range out.Results {
-		if has(r.Types, "subway_station", "train_station", "transit_station", "light_rail_station") &&
-			len(r.AddressComponents) > 0 {
-			return r.AddressComponents[0].LongName, nil
+	if names, err := c.nearbyNames(ctx, lat, lng, nil, 250, lang); err == nil {
+		if v := commonVenue(names); v != "" {
+			return v, nil
 		}
 	}
-	// 2. a named place that isn't just a street address.
-	for _, r := range out.Results {
-		if has(r.Types, "point_of_interest", "establishment", "tourist_attraction", "shopping_mall") &&
-			!has(r.Types, "street_address", "premise", "subpremise", "route") &&
-			len(r.AddressComponents) > 0 {
-			return r.AddressComponents[0].LongName, nil
-		}
-	}
-	// 3. street / neighbourhood, most specific first.
-	for _, pref := range []string{"neighborhood", "sublocality_level_2", "route", "sublocality_level_1", "locality"} {
-		for _, r := range out.Results {
-			for _, comp := range r.AddressComponents {
-				if has(comp.Types, pref) && comp.LongName != "" {
-					return comp.LongName, nil
-				}
-			}
-		}
-	}
-	if fa := out.Results[0].FormattedAddress; fa != "" {
-		if i := strings.IndexByte(fa, ','); i > 0 {
-			return strings.TrimSpace(fa[:i]), nil
-		}
+	station, err := c.nearbyNames(ctx, lat, lng,
+		[]string{"subway_station", "train_station", "light_rail_station"}, 550, lang)
+	if err == nil && len(station) > 0 {
+		return cleanVenue(station[0]), nil
 	}
 	return "", nil
+}
+
+func (c *Client) nearbyNames(ctx context.Context, lat, lng float64, primaryTypes []string, radius float64, lang string) ([]string, error) {
+	body := map[string]any{
+		"maxResultCount": 15,
+		"rankPreference": "DISTANCE",
+		"locationRestriction": map[string]any{
+			"circle": map[string]any{
+				"center": map[string]float64{"latitude": lat, "longitude": lng},
+				"radius": radius,
+			},
+		},
+	}
+	if len(primaryTypes) > 0 {
+		body["includedPrimaryTypes"] = primaryTypes
+	}
+	if lc := langCode(lang); lc != "" {
+		body["languageCode"] = lc
+	}
+	reqBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchNearbyURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", "places.displayName")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("nearby %d", resp.StatusCode)
+	}
+	var out struct {
+		Places []struct {
+			DisplayName struct{ Text string } `json:"displayName"`
+		} `json:"places"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(out.Places))
+	for _, p := range out.Places {
+		if p.DisplayName.Text != "" {
+			names = append(names, p.DisplayName.Text)
+		}
+	}
+	return names, nil
+}
+
+var venueStop = map[string]bool{
+	"the": true, "and": true, "cafe": true, "shop": true, "store": true,
+	"restaurant": true, "bangkok": true, "thailand": true, "co": true, "ltd": true,
+	"company": true, "limited": true, "public": true, "branch": true, "bts": true,
+	"mrt": true, "station": true, "soi": true, "road": true, "rd": true, "by": true,
+	"at": true, "of": true, "for": true, "bar": true, "kiosk": true, "pop": true, "up": true,
+	"บริษัท": true, "จำกัด": true, "สาขา": true, "สถานี": true, "มหาชน": true, "ร้าน": true,
+}
+
+var venueClean = regexp.MustCompile(`(?i)\s*(\(.*?\)|[-–—,@|:].*|\bbts\b.*|\bmrt\b.*|\bstation\b.*|\bfl\.?\s*\w+.*|\bfloor\b.*|สาขา.*|ชั้น.*)$`)
+var venuePrefix = regexp.MustCompile(`(?i)^\s*(สถานีรถไฟฟ้าใต้ดิน|สถานีรถไฟฟ้า|สถานีรถไฟ|สถานี|รถไฟฟ้า|บีทีเอส|bts|mrt|arl)\s*`)
+var venuePunct = regexp.MustCompile(`[()\-–—,@/|:."'’]+`)
+var venueSpace = regexp.MustCompile(`\s+`)
+
+func cleanVenue(s string) string {
+	s = strings.TrimSpace(s)
+	for i := 0; i < 3; i++ {
+		n := strings.TrimSpace(venuePrefix.ReplaceAllString(s, ""))
+		n = strings.TrimSpace(venueClean.ReplaceAllString(n, ""))
+		if n == "" || n == s {
+			break
+		}
+		s = n
+	}
+	return s
+}
+
+// commonVenue finds the multi-word phrase that the most place names contain
+// (case-insensitive), preferring longer phrases. It needs the phrase in at
+// least a third of the names, and at least three.
+func commonVenue(names []string) string {
+	if len(names) < 3 {
+		return ""
+	}
+	type hit struct {
+		count   int
+		display string
+	}
+	seen := map[string]*hit{}
+	for _, name := range names {
+		norm := venueSpace.ReplaceAllString(venuePunct.ReplaceAllString(strings.ToLower(name), " "), " ")
+		words := strings.Fields(norm)
+		local := map[string]bool{}
+		for n := 4; n >= 2; n-- {
+			for i := 0; i+n <= len(words); i++ {
+				sh := words[i : i+n]
+				allStop := true
+				for _, w := range sh {
+					if !venueStop[w] {
+						allStop = false
+					}
+				}
+				if allStop {
+					continue
+				}
+				key := strings.Join(sh, " ")
+				if local[key] {
+					continue
+				}
+				local[key] = true
+				h := seen[key]
+				if h == nil {
+					h = &hit{display: originalSpan(name, sh)}
+					seen[key] = h
+				} else if d := originalSpan(name, sh); d != "" && !isAllUpper(d) && isAllUpper(h.display) {
+					h.display = d // prefer mixed-case over SHOUTING
+				}
+				h.count++
+			}
+		}
+	}
+	threshold := len(names) / 3
+	if threshold < 3 {
+		threshold = 3
+	}
+	best := ""
+	bestKey := ""
+	bestScore := 0
+	for key, h := range seen {
+		if h.count < threshold {
+			continue
+		}
+		score := h.count*10 + len(strings.Fields(key)) // more names, then more words
+		if score > bestScore {
+			bestScore, best, bestKey = score, h.display, key
+		}
+	}
+	if best == "" {
+		return ""
+	}
+	// a longer phrase that contains the winner and nearly matches its count wins.
+	for key, h := range seen {
+		if key != bestKey && strings.Contains(key, bestKey) && h.count >= threshold && len(key) > len(bestKey) {
+			best, bestKey = h.display, key
+		}
+	}
+	return cleanVenue(best)
+}
+
+// originalSpan finds the run of `words` inside name (case-insensitively) and
+// returns that slice of name with its original casing.
+func originalSpan(name string, words []string) string {
+	lowNorm := venueSpace.ReplaceAllString(venuePunct.ReplaceAllString(strings.ToLower(name), " "), " ")
+	target := strings.Join(words, " ")
+	idx := strings.Index(lowNorm, target)
+	if idx < 0 {
+		return strings.Title(target)
+	}
+	// map the normalised index back to the original string, roughly, by word.
+	origFields := strings.Fields(venueSpace.ReplaceAllString(venuePunct.ReplaceAllString(name, " "), " "))
+	before := strings.Fields(lowNorm[:idx])
+	if len(before)+len(words) > len(origFields) {
+		return strings.Title(target)
+	}
+	return strings.Join(origFields[len(before):len(before)+len(words)], " ")
+}
+
+func isAllUpper(s string) bool {
+	has := false
+	for _, r := range s {
+		if r >= 'a' && r <= 'z' {
+			return false
+		}
+		if r >= 'A' && r <= 'Z' {
+			has = true
+		}
+	}
+	return has
 }
 
 // --- Places (New) response shapes -------------------------------------------

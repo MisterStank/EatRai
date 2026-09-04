@@ -36,6 +36,35 @@ func TestPriceLevelEnums(t *testing.T) {
 	}
 }
 
+func TestCommonVenue(t *testing.T) {
+	siam := []string{
+		"Molly Ally Siam Paragon", "Hokkai-Don (Siam Paragon)", "CH Home Media",
+		"Ros'niyom Siam Paragon", "Burn Busaba Siam Paragon",
+		"PAR RIS Pop-up - Siam Paragon", "Mothercare Thailand - Siam Paragon",
+		"Atmo Decor,Siam Paragon", "U.S. POLO ASSN. - SIAM PARAGON",
+	}
+	if got := commonVenue(siam); got != "Siam Paragon" {
+		t.Fatalf("siam venue = %q, want %q", got, "Siam Paragon")
+	}
+	// no shared venue -> no guess
+	if got := commonVenue([]string{"Oak's Diner", "Paris Mikki", "Hit It", "SQ Bangkok"}); got != "" {
+		t.Fatalf("unrelated names -> %q, want empty", got)
+	}
+}
+
+func TestCleanVenue(t *testing.T) {
+	for in, want := range map[string]string{
+		"Phrom Phong BTS Station":             "Phrom Phong",
+		"Victory Monument (Ratchawithi side)": "Victory Monument",
+		"After You (Siam Paragon) Fl.G":       "After You",
+		"Terminal 21":                         "Terminal 21",
+	} {
+		if got := cleanVenue(in); got != want {
+			t.Errorf("cleanVenue(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestRankPreference(t *testing.T) {
 	if (Query{Sort: "match"}).rankPreference() != "RELEVANCE" {
 		t.Fatal("match -> RELEVANCE")
