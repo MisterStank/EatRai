@@ -85,7 +85,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(3.5),
     height: 52,
   },
-  input: { flex: 1, fontFamily: font.body, fontSize: 15, color: color.ink, height: "100%" },
+  // 16px min — anything smaller and iOS Safari zooms the page in on focus.
+  input: { flex: 1, fontFamily: font.body, fontSize: 16, color: color.ink, height: "100%" },
   err: { fontFamily: font.bodySemi, fontSize: 13, color: color.nope, marginTop: space(2.5) },
   primary: {
     height: 52,

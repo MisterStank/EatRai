@@ -203,7 +203,16 @@ export function MapLocationScreen({
               </View>
             ) : null}
 
-            <View style={[styles.top, { paddingTop: insets.top + space(2) }]}>
+            <View
+              style={[
+                styles.top,
+                {
+                  paddingTop: insets.top + space(2),
+                  paddingLeft: Math.max(space(4), insets.left + space(2)),
+                  paddingRight: Math.max(space(4), insets.right + space(2)),
+                },
+              ]}
+            >
               <Pressable style={styles.iconBtn} onPress={onClose} hitSlop={8}>
                 <Feather name="arrow-left" size={20} color={color.ink} />
               </Pressable>
@@ -299,7 +308,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
-  input: { flex: 1, fontFamily: font.body, fontSize: 14.5, color: color.ink, height: "100%" },
+  // 16px min — anything smaller and iOS Safari zooms the page in on focus.
+  input: { flex: 1, fontFamily: font.body, fontSize: 16, color: color.ink, height: "100%" },
   pin: {
     position: "absolute",
     left: 0,
