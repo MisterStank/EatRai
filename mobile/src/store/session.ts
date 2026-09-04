@@ -102,10 +102,11 @@ export const useSession = create<SessionState>()(
 setTimeout(() => useSession.getState().markHydrated(), 2500);
 
 export const filterCount = (
-  s: Pick<SessionState, "categories" | "openNow" | "radiusM" | "minRating" | "priceLevels">,
+  s: Pick<SessionState, "categories" | "openNow" | "radiusM" | "minRating" | "priceLevels" | "sort">,
 ): number =>
   s.categories.length +
   (s.openNow ? 1 : 0) +
   (s.radiusM !== DEFAULT_RADIUS_M ? 1 : 0) +
   (s.minRating > 0 ? 1 : 0) +
-  (s.priceLevels.length > 0 ? 1 : 0);
+  (s.priceLevels.length > 0 ? 1 : 0) +
+  (s.sort !== "near" ? 1 : 0);

@@ -153,12 +153,12 @@ export function DeckScreen() {
       const deck = next.filter((c) => !excluded.current.has(c.id));
       const keepAt = keepId ? deck.findIndex((c) => c.id === keepId) : -1;
       setCards(deck);
-      if (keepAt >= 0) {
-        setIndex(keepAt);
-      } else {
-        setIndex(0);
-        history.current = [];
-      }
+      // Swipe history is positional (undo = "go back one index"), so it only
+      // makes sense against the deck it was built from. Any reload — filter
+      // change, new location — invalidates it, even when the current card
+      // happens to still be present at a different index in the new deck.
+      history.current = [];
+      setIndex(keepAt >= 0 ? keepAt : 0);
       if (deck.length === 0) setError(t("noneWithFilters"));
       else if (!guideSeen) setShowGuidePrompt(true);
       else if (!hintSeen) setShowHint(true);
@@ -290,7 +290,7 @@ export function DeckScreen() {
         <View style={{ height: insets.top + space(2) }} />
         <TopBar
           locationLabel={place ?? t("nearYou")}
-          filterCount={filterCount({ categories, openNow, radiusM, minRating, priceLevels })}
+          filterCount={filterCount({ categories, openNow, radiusM, minRating, priceLevels, sort })}
           onLocation={() => setShowLocation(true)}
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
@@ -337,6 +337,9 @@ export function DeckScreen() {
                     <Text style={styles.linkText}>{t("startOver")}</Text>
                   </Pressable>
                 ) : null}
+                <Pressable style={styles.linkBtn} onPress={() => setShowLocation(true)}>
+                  <Text style={styles.linkText}>{t("changeLocation")}</Text>
+                </Pressable>
               </View>
             </View>
           ) : (

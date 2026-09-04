@@ -65,6 +65,26 @@ func TestCleanVenue(t *testing.T) {
 	}
 }
 
+// TestCuisinesThaiFallbackNeverLeaksEnglish is a regression test for a bug
+// where an unmapped Google type fell back to the raw (English)
+// primaryTypeDisplayName regardless of language, so a Thai-language session
+// could show untranslated English text like "Buffet Restaurant".
+func TestCuisinesThaiFallbackNeverLeaksEnglish(t *testing.T) {
+	// "buffet_restaurant" is curated (English + Thai) — should hit the map.
+	if got := cuisines([]string{"buffet_restaurant"}, "Buffet Restaurant", "th"); !reflect.DeepEqual(got, []string{"บุฟเฟต์"}) {
+		t.Fatalf("curated th type = %v, want [บุฟเฟต์]", got)
+	}
+	// Wholly unmapped type: English keeps Google's raw display name...
+	if got := cuisines([]string{"some_new_google_type"}, "Some New Google Type", "en"); !reflect.DeepEqual(got, []string{"Some New Google Type"}) {
+		t.Fatalf("unmapped en type = %v, want the raw primary label", got)
+	}
+	// ...but Thai must never show that same raw English string.
+	got := cuisines([]string{"some_new_google_type"}, "Some New Google Type", "th")
+	if len(got) != 1 || got[0] != "ร้านอาหาร" {
+		t.Fatalf("unmapped th type = %v, want generic Thai fallback (no English leak)", got)
+	}
+}
+
 func TestRankPreference(t *testing.T) {
 	if (Query{Sort: "match"}).rankPreference() != "RELEVANCE" {
 		t.Fatal("match -> RELEVANCE")
