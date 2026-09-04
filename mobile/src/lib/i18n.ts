@@ -61,23 +61,37 @@ const en = {
   swipeHint: "Swipe to choose. Tap the photo to see more, tap the name for details.",
   gotIt: "Got it",
 
-  // help sheet
+  // help / guide
   helpTitle: "How to use",
   helpIntro: "Find somewhere to eat in a few swipes.",
-  helpSwipeTitle: "Swipe or tap",
-  helpSwipeBody: "Swipe right to save a place, left to skip. Or use the buttons at the bottom.",
-  helpMoreTitle: "See more",
-  helpMoreBody: "Tap the photo to flip through pictures. Tap the name for details, hours and directions.",
-  helpUndoTitle: "Undo",
-  helpUndoBody: "Hit the back arrow to take back your last swipe.",
-  helpAreaTitle: "Change the area",
-  helpAreaBody: "Tap the location pill up top to search anywhere or drop a pin on the map.",
-  helpFiltersTitle: "Filters",
-  helpFiltersBody: "Tap the slider icon to set cuisine, distance, rating, price and open-now.",
-  helpDecideTitle: "Can't decide?",
-  helpDecideBody: "\"Decide for me\" picks one of your saved places at random.",
-  helpListTitle: "Your list",
-  helpListBody: "Saved places live on this device only — not synced, and cleared if you delete the app.",
+
+  guidePromptTitle: "First time here?",
+  guidePromptBody: "Take a 20-second tour of how EatRai works?",
+  guidePromptYes: "Show me",
+  guidePromptLater: "Maybe later",
+
+  guideSkip: "Skip",
+  guideBack: "Back",
+  guideNext: "Next",
+
+  guideSwipeTitle: "Swipe or tap",
+  guideSwipeBody: "Swipe a card right to save it, left to skip. Prefer buttons? Use ✕ and ♥ below the deck.",
+
+  guideMoreTitle: "See more",
+  guideMoreBody: "Tap the photo to flip through pictures. Tap the name to open details, hours and directions.",
+
+  guideUndoTitle: "Changed your mind?",
+  guideUndoBody: "Tap the ↺ arrow to bring back the last card you swiped.",
+
+  guideRefTitle: "Good to know",
+  guideRefAreaTitle: "Change the area",
+  guideRefAreaBody: "Tap the location pill up top to search anywhere or drop a pin on the map.",
+  guideRefFiltersTitle: "Filters",
+  guideRefFiltersBody: "Tap the sliders icon to set cuisine, distance, rating, price and open-now.",
+  guideRefDecideTitle: "Can't decide?",
+  guideRefDecideBody: "\"Decide for me\" picks one of your saved places at random.",
+  guideRefListTitle: "Your list",
+  guideRefListBody: "Saved places live on this device only — not synced, and cleared if you delete the app.",
 
   // card / status
   open: "Open now",
@@ -185,20 +199,34 @@ const th: Record<Key, string> = {
 
   helpTitle: "วิธีใช้",
   helpIntro: "หาร้านกินได้ในไม่กี่ปัด",
-  helpSwipeTitle: "ปัดหรือแตะ",
-  helpSwipeBody: "ปัดขวาเพื่อบันทึกร้าน ปัดซ้ายเพื่อข้าม หรือใช้ปุ่มด้านล่าง",
-  helpMoreTitle: "ดูเพิ่มเติม",
-  helpMoreBody: "แตะรูปเพื่อดูรูปอื่น แตะชื่อร้านเพื่อดูรายละเอียด เวลาเปิด และเส้นทาง",
-  helpUndoTitle: "ย้อนกลับ",
-  helpUndoBody: "แตะปุ่มลูกศรย้อนกลับเพื่อยกเลิกการปัดครั้งล่าสุด",
-  helpAreaTitle: "เปลี่ยนพื้นที่",
-  helpAreaBody: "แตะป้ายตำแหน่งด้านบนเพื่อค้นหาพื้นที่อื่นหรือปักหมุดบนแผนที่",
-  helpFiltersTitle: "ตัวกรอง",
-  helpFiltersBody: "แตะไอคอนสไลเดอร์เพื่อตั้งประเภทอาหาร ระยะทาง คะแนน ราคา และร้านที่เปิดอยู่",
-  helpDecideTitle: "เลือกไม่ถูก?",
-  helpDecideBody: "“เลือกให้เลย” จะสุ่มร้านหนึ่งจากร้านที่คุณบันทึกไว้",
-  helpListTitle: "รายการของคุณ",
-  helpListBody: "ร้านที่บันทึกไว้จะอยู่ในเครื่องนี้เท่านั้น ไม่ซิงก์ และจะหายเมื่อลบแอป",
+
+  guidePromptTitle: "เพิ่งเคยใช้ครั้งแรก?",
+  guidePromptBody: "ดูวิธีใช้ EatRai แบบเร็ว ๆ ใน 20 วินาทีไหม?",
+  guidePromptYes: "ดูเลย",
+  guidePromptLater: "ไว้ทีหลัง",
+
+  guideSkip: "ข้าม",
+  guideBack: "ย้อนกลับ",
+  guideNext: "ถัดไป",
+
+  guideSwipeTitle: "ปัดหรือแตะ",
+  guideSwipeBody: "ปัดการ์ดไปทางขวาเพื่อบันทึก ปัดซ้ายเพื่อข้าม หรือใช้ปุ่ม ✕ และ ♥ ใต้สำรับการ์ด",
+
+  guideMoreTitle: "ดูเพิ่มเติม",
+  guideMoreBody: "แตะรูปเพื่อดูรูปอื่น แตะชื่อร้านเพื่อดูรายละเอียด เวลาเปิด และเส้นทาง",
+
+  guideUndoTitle: "เปลี่ยนใจ?",
+  guideUndoBody: "แตะปุ่มลูกศร ↺ เพื่อเรียกการ์ดที่เพิ่งปัดกลับมา",
+
+  guideRefTitle: "รู้ไว้หน่อย",
+  guideRefAreaTitle: "เปลี่ยนพื้นที่",
+  guideRefAreaBody: "แตะป้ายตำแหน่งด้านบนเพื่อค้นหาพื้นที่อื่นหรือปักหมุดบนแผนที่",
+  guideRefFiltersTitle: "ตัวกรอง",
+  guideRefFiltersBody: "แตะไอคอนสไลเดอร์เพื่อตั้งประเภทอาหาร ระยะทาง คะแนน ราคา และร้านที่เปิดอยู่",
+  guideRefDecideTitle: "เลือกไม่ถูก?",
+  guideRefDecideBody: "“เลือกให้เลย” จะสุ่มร้านหนึ่งจากร้านที่คุณบันทึกไว้",
+  guideRefListTitle: "รายการของคุณ",
+  guideRefListBody: "ร้านที่บันทึกไว้จะอยู่ในเครื่องนี้เท่านั้น ไม่ซิงก์ และจะหายเมื่อลบแอป",
 
   open: "เปิดอยู่",
   closed: "ปิดอยู่",

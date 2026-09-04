@@ -26,6 +26,7 @@ type SessionState = FilterValue & {
   liked: Card[];
   recentAreas: RecentArea[];
   hintSeen: boolean;
+  guideSeen: boolean;
   hydrated: boolean;
 
   setLang: (lang: Lang) => void;
@@ -35,6 +36,7 @@ type SessionState = FilterValue & {
   clearLiked: () => void;
   addRecentArea: (a: RecentArea) => void;
   markHintSeen: () => void;
+  markGuideSeen: () => void;
   markHydrated: () => void;
 };
 
@@ -51,6 +53,7 @@ export const useSession = create<SessionState>()(
       liked: [],
       recentAreas: [],
       hintSeen: false,
+      guideSeen: false,
       hydrated: false,
 
       setLang: (lang) => set({ lang }),
@@ -68,6 +71,7 @@ export const useSession = create<SessionState>()(
           return { recentAreas: [{ ...a, label }, ...rest].slice(0, MAX_RECENT) };
         }),
       markHintSeen: () => set({ hintSeen: true }),
+      markGuideSeen: () => set({ guideSeen: true }),
       markHydrated: () => set((s) => (s.hydrated ? s : { hydrated: true })),
     }),
     {
@@ -84,6 +88,7 @@ export const useSession = create<SessionState>()(
         liked: s.liked,
         recentAreas: s.recentAreas,
         hintSeen: s.hintSeen,
+        guideSeen: s.guideSeen,
       }),
       onRehydrateStorage: () => () => {
         useSession.getState().markHydrated();

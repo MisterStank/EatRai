@@ -16,6 +16,7 @@ import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { HelpSheet } from "../components/HelpSheet";
+import { GuidePrompt } from "../components/GuidePrompt";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { MapLocationScreen } from "../components/MapLocationScreen";
 import { DecideSheet } from "../components/DecideSheet";
@@ -47,6 +48,8 @@ export function DeckScreen() {
   const hydrated = useSession((s) => s.hydrated);
   const hintSeen = useSession((s) => s.hintSeen);
   const markHintSeen = useSession((s) => s.markHintSeen);
+  const guideSeen = useSession((s) => s.guideSeen);
+  const markGuideSeen = useSession((s) => s.markGuideSeen);
 
   const [coords, setCoords] = useState<Coords | null>(null);
   const [place, setPlace] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export function DeckScreen() {
   const [showDecide, setShowDecide] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
   const history = useRef<{ card: Card; dir: SwipeDir }[]>([]);
@@ -156,6 +160,7 @@ export function DeckScreen() {
         history.current = [];
       }
       if (deck.length === 0) setError(t("noneWithFilters"));
+      else if (!guideSeen) setShowGuidePrompt(true);
       else if (!hintSeen) setShowHint(true);
     } catch (e: any) {
       if (ctrl.signal.aborted || e?.name === "AbortError") return;
@@ -213,6 +218,17 @@ export function DeckScreen() {
     markHintSeen();
   };
 
+  const acceptGuide = () => {
+    markGuideSeen();
+    setShowGuidePrompt(false);
+    setShowHelp(true);
+  };
+
+  const dismissGuidePrompt = () => {
+    markGuideSeen();
+    setShowGuidePrompt(false);
+  };
+
   const widenSearch = () => {
     excluded.current = new Set(cards.map((c) => c.id));
     setWidenM((prev) => {
@@ -234,7 +250,14 @@ export function DeckScreen() {
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const anyModal =
-      showFilters || showLiked || showLocation || showDecide || !!detail || showHint || showHelp;
+      showFilters ||
+      showLiked ||
+      showLocation ||
+      showDecide ||
+      !!detail ||
+      showHint ||
+      showHelp ||
+      showGuidePrompt;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "?" && !anyModal) {
         setShowHelp(true);
@@ -248,7 +271,7 @@ export function DeckScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp]);
+  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt]);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dragX.value, [40, 130], [0, 0.55], Extrapolation.CLAMP),
@@ -366,6 +389,11 @@ export function DeckScreen() {
         onClose={() => setShowLiked(false)}
       />
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
+      <GuidePrompt
+        visible={showGuidePrompt}
+        onShowMe={acceptGuide}
+        onDismiss={dismissGuidePrompt}
+      />
       <MapLocationScreen
         visible={showLocation}
         initial={coords}
