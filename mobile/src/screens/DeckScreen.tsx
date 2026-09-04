@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { getNearby, type Card } from "../api/client";
+import { getNearby, reverseGeocode, type Card } from "../api/client";
 import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
@@ -39,6 +39,7 @@ export function DeckScreen() {
   const sort = useSession((s) => s.sort);
   const liked = useSession((s) => s.liked);
   const addLiked = useSession((s) => s.addLiked);
+  const addRecentArea = useSession((s) => s.addRecentArea);
   const removeLiked = useSession((s) => s.removeLiked);
   const clearLiked = useSession((s) => s.clearLiked);
   const setFilters = useSession((s) => s.setFilters);
@@ -81,16 +82,21 @@ export function DeckScreen() {
       setLoading(true);
       setError(null);
       const pos = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("timeout")), LOCATE_TIMEOUT_MS),
         ),
       ]);
-      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setCoords(here);
       try {
-        const [g] = await Location.reverseGeocodeAsync(pos.coords);
-        const label = g?.district || g?.subregion || g?.city || g?.region;
-        setPlace(label || null);
+        const { label } = await reverseGeocode(here.lat, here.lng, { lang });
+        if (label) {
+          setPlace(label);
+        } else {
+          const [g] = await Location.reverseGeocodeAsync(pos.coords);
+          setPlace(g?.district || g?.subregion || g?.city || g?.region || null);
+        }
       } catch {
         setPlace(null);
       }
@@ -110,6 +116,7 @@ export function DeckScreen() {
     setManualLocation(true);
     setError(null);
     setPlace(label);
+    if (label && label !== t("pinnedHere")) addRecentArea({ lat: c.lat, lng: c.lng, label });
     excluded.current.clear();
     setWidenM(null);
     setCoords(c);

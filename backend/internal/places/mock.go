@@ -198,17 +198,53 @@ func MockList(ids []string, lang string) []Card {
 	return out
 }
 
-// MockGeocode fakes "change location" — everything resolves to Samyan, Bangkok.
+// MockGeocode fakes "change location" — everything resolves near Samyan,
+// Bangkok. Accepts a free-text query or a mock autocomplete placeId.
 func MockGeocode(query string) (lat, lng float64, label string) {
-	if strings.TrimSpace(query) == "" {
+	query = strings.TrimSpace(query)
+	if strings.HasPrefix(query, "mock_ac_") {
+		want := strings.TrimPrefix(query, "mock_ac_")
+		for _, a := range mockAreas {
+			if slug(a) == want {
+				query = a
+				break
+			}
+		}
+	}
+	if query == "" {
 		query = "Samyan"
 	}
 	return 13.7326, 100.5289, query
 }
 
-// MockReverse fakes the pin's area label.
+// MockReverse fakes the pin's nearest-landmark label.
 func MockReverse(lat, lng float64) string {
-	return "Samyan"
+	return "Samyan Mitrtown"
+}
+
+var mockAreas = []string{
+	"Siam Square", "Siam Paragon", "Samyan Mitrtown", "Banthat Thong Road",
+	"Chinatown (Yaowarat)", "Thonglor", "Ari", "Ekkamai", "Chatuchak Market",
+	"Asok", "Silom", "Sathorn", "Phrom Phong", "On Nut", "Victory Monument",
+}
+
+// MockAutocomplete matches the query against a small list of Bangkok areas.
+func MockAutocomplete(q string) []Suggestion {
+	ql := strings.ToLower(strings.TrimSpace(q))
+	out := make([]Suggestion, 0, 5)
+	for _, a := range mockAreas {
+		if strings.Contains(strings.ToLower(a), ql) {
+			out = append(out, Suggestion{
+				PlaceID:   "mock_ac_" + slug(a),
+				Primary:   a,
+				Secondary: "Bangkok, Thailand",
+			})
+		}
+		if len(out) == 5 {
+			break
+		}
+	}
+	return out
 }
 
 func intersects(a, b []string) bool {

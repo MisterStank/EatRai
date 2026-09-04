@@ -10,6 +10,7 @@ import { LocationForm } from "./LocationForm";
 // full-screen search form instead.
 export function MapLocationScreen({
   visible,
+  initial,
   onClose,
   onConfirm,
   onUseMyLocation,
@@ -34,6 +35,7 @@ export function MapLocationScreen({
         </View>
         <View style={styles.body}>
           <LocationForm
+            center={initial}
             onPick={(c, label) => {
               onConfirm(c, label);
               onClose();

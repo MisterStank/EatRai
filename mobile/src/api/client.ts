@@ -95,12 +95,39 @@ export async function getList(
 
 export type GeoResult = { lat: number; lng: number; label: string };
 
-// geocode resolves a free-text area ("Thonglor", "Siam Paragon") to a point.
+export type Suggestion = { placeId: string; primaryText: string; secondaryText: string };
+
+// suggest returns type-ahead predictions, biased to (lat,lng). `token` is a
+// per-search session UUID — pass the same one to geocode() when the user picks.
+export async function suggest(
+  q: string,
+  opts: { token: string; lat?: number; lng?: number; lang?: Lang; signal?: AbortSignal },
+): Promise<Suggestion[]> {
+  if (q.trim().length < 2) return [];
+  const p = new URLSearchParams({ q, token: opts.token });
+  if (opts.lat != null && opts.lng != null) {
+    p.set("lat", String(opts.lat));
+    p.set("lng", String(opts.lng));
+  }
+  if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+  const res = await fetch(`${BASE}/suggest?${p.toString()}`, { signal: opts.signal });
+  if (!res.ok) return [];
+  return ((await res.json()) as { suggestions: Suggestion[] }).suggestions ?? [];
+}
+
+// geocode resolves either a free-text area ("Thonglor") or an autocomplete
+// placeId (with its session token) to a point + label.
 export async function geocode(
   q: string,
-  opts: { lang?: Lang; signal?: AbortSignal } = {},
+  opts: { placeId?: string; token?: string; lang?: Lang; signal?: AbortSignal } = {},
 ): Promise<GeoResult> {
-  const p = new URLSearchParams({ q });
+  const p = new URLSearchParams();
+  if (opts.placeId) {
+    p.set("placeId", opts.placeId);
+    if (opts.token) p.set("token", opts.token);
+  } else {
+    p.set("q", q);
+  }
   if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
   const res = await fetch(`${BASE}/geocode?${p.toString()}`, { signal: opts.signal });
   if (!res.ok) throw await readError(res, "Couldn't find that place");

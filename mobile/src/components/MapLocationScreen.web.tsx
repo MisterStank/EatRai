@@ -1,20 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { geocode, reverseGeocode } from "../api/client";
+import { reverseGeocode } from "../api/client";
 import { color, font, radius, space } from "../theme/tokens";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { LocationForm } from "./LocationForm";
+import { AreaSearch } from "./AreaSearch";
 
 const MAPLIBRE_VERSION = "4.7.1";
 const JS_URL = `https://cdn.jsdelivr.net/npm/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
@@ -78,15 +71,13 @@ export function MapLocationScreen({
   const [failed, setFailed] = useState(false);
   const [label, setLabel] = useState("");
   const [labelBusy, setLabelBusy] = useState(false);
-  const [q, setQ] = useState("");
-  const [searching, setSearching] = useState(false);
+  const suppressReverse = useRef(false);
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
     setReady(false);
     setFailed(false);
-    setQ("");
     centerRef.current = initial ?? BKK;
 
     loadMapLibre()
@@ -110,6 +101,10 @@ export function MapLocationScreen({
         map.on("moveend", () => {
           const c = map.getCenter();
           centerRef.current = { lat: c.lat, lng: c.lng };
+          if (suppressReverse.current) {
+            suppressReverse.current = false;
+            return; // the label came from the picked suggestion — keep it
+          }
           scheduleReverse(centerRef.current);
         });
       })
@@ -144,18 +139,13 @@ export function MapLocationScreen({
     }
   };
 
-  const submitSearch = async () => {
-    const query = q.trim();
-    if (query.length < 2 || searching) return;
-    setSearching(true);
-    try {
-      const r = await geocode(query, { lang });
-      centerRef.current = { lat: r.lat, lng: r.lng };
-      mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15 });
-    } catch {
-      /* leave the map where it is */
-    } finally {
-      setSearching(false);
+  const onPickArea = (c: Coords, picked: string) => {
+    centerRef.current = c;
+    setLabel(picked);
+    setLabelBusy(false);
+    if (mapRef.current) {
+      suppressReverse.current = true;
+      mapRef.current.flyTo({ center: [c.lng, c.lat], zoom: 16 });
     }
   };
 
@@ -216,18 +206,8 @@ export function MapLocationScreen({
               <Pressable style={styles.iconBtn} onPress={onClose} hitSlop={8}>
                 <Feather name="arrow-left" size={20} color={color.ink} />
               </Pressable>
-              <View style={styles.field}>
-                <Feather name="search" size={15} color={color.inkFaint} />
-                <TextInput
-                  style={styles.input}
-                  value={q}
-                  onChangeText={setQ}
-                  placeholder={t("searchArea")}
-                  placeholderTextColor={color.inkFaint}
-                  returnKeyType="search"
-                  onSubmitEditing={submitSearch}
-                />
-                {searching ? <ActivityIndicator size="small" color={color.inkFaint} /> : null}
+              <View style={styles.searchSlot}>
+                <AreaSearch onPick={onPickArea} center={centerRef.current} />
               </View>
             </View>
 
@@ -286,30 +266,14 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space(2.5),
     paddingHorizontal: space(4),
     paddingBottom: space(2),
+    zIndex: 20,
+    overflow: "visible",
   },
-  field: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space(2),
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.line,
-    borderRadius: radius.md,
-    paddingHorizontal: space(3),
-    height: 46,
-    shadowColor: "#17140F",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  // 16px min — anything smaller and iOS Safari zooms the page in on focus.
-  input: { flex: 1, fontFamily: font.body, fontSize: 16, color: color.ink, height: "100%" },
+  searchSlot: { flex: 1, overflow: "visible" },
   pin: {
     position: "absolute",
     left: 0,

@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	searchTextURL = "https://places.googleapis.com/v1/places:searchText"
-	geocodeAPIURL = "https://maps.googleapis.com/maps/api/geocode/json"
-	detailURL     = "https://places.googleapis.com/v1/places/"
-	photoMedia    = "https://places.googleapis.com/v1/%s/media"
-	searchMask    = "places.id,places.displayName,places.formattedAddress,places.location," +
+	searchTextURL   = "https://places.googleapis.com/v1/places:searchText"
+	autocompleteURL = "https://places.googleapis.com/v1/places:autocomplete"
+	geocodeAPIURL   = "https://maps.googleapis.com/maps/api/geocode/json"
+	detailURL       = "https://places.googleapis.com/v1/places/"
+	photoMedia      = "https://places.googleapis.com/v1/%s/media"
+	searchMask      = "places.id,places.displayName,places.formattedAddress,places.location," +
 		"places.priceLevel,places.priceRange,places.rating,places.userRatingCount,places.types," +
 		"places.primaryTypeDisplayName,places.photos,places.currentOpeningHours.openNow," +
 		"places.googleMapsUri"
@@ -350,13 +351,135 @@ func (c *Client) Geocode(ctx context.Context, query, lang string) (lat, lng floa
 	return p.Location.Latitude, p.Location.Longitude, label, nil
 }
 
-// Reverse turns a coordinate into a short area label ("Bang Rak") via the
-// classic Geocoding API. The caller caches aggressively — this is a separate
-// billed SKU.
+// PlaceLocation resolves an autocomplete placeId to a coordinate + label via
+// Place Details on the location-only field mask (Essentials tier). Passing the
+// session token completes the autocomplete session so its predictions bill at
+// zero.
+func (c *Client) PlaceLocation(ctx context.Context, placeID, token, lang string) (lat, lng float64, label string, err error) {
+	u := detailURL + url.PathEscape(placeID)
+	q := url.Values{}
+	if token != "" {
+		q.Set("sessionToken", token)
+	}
+	if lc := langCode(lang); lc != "" {
+		q.Set("languageCode", lc)
+	}
+	if s := q.Encode(); s != "" {
+		u += "?" + s
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return 0, 0, "", err
+	}
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", "location,displayName,shortFormattedAddress")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return 0, 0, "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0, 0, "", fmt.Errorf("place location %d", resp.StatusCode)
+	}
+	var p struct {
+		Location             struct{ Latitude, Longitude float64 } `json:"location"`
+		DisplayName          struct{ Text string }                 `json:"displayName"`
+		ShortFormattedAddres string                                `json:"shortFormattedAddress"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		return 0, 0, "", err
+	}
+	label = p.DisplayName.Text
+	if label == "" {
+		label = p.ShortFormattedAddres
+	}
+	return p.Location.Latitude, p.Location.Longitude, label, nil
+}
+
+// Suggestion is one autocomplete prediction.
+type Suggestion struct {
+	PlaceID   string `json:"placeId"`
+	Primary   string `json:"primaryText"`
+	Secondary string `json:"secondaryText"`
+}
+
+// Autocomplete returns type-ahead predictions, biased to (lat,lng). token is
+// the caller's per-search session UUID.
+func (c *Client) Autocomplete(ctx context.Context, input, token, lang string, lat, lng float64) ([]Suggestion, error) {
+	body := map[string]any{"input": input}
+	if token != "" {
+		body["sessionToken"] = token
+	}
+	if lat != 0 || lng != 0 {
+		body["locationBias"] = map[string]any{
+			"circle": map[string]any{
+				"center": map[string]float64{"latitude": lat, "longitude": lng},
+				"radius": 30000,
+			},
+		}
+	}
+	if lc := langCode(lang); lc != "" {
+		body["languageCode"] = lc
+	}
+	reqBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, autocompleteURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("autocomplete %d", resp.StatusCode)
+	}
+
+	var out struct {
+		Suggestions []struct {
+			PlacePrediction struct {
+				PlaceID          string `json:"placeId"`
+				StructuredFormat struct {
+					MainText      struct{ Text string } `json:"mainText"`
+					SecondaryText struct{ Text string } `json:"secondaryText"`
+				} `json:"structuredFormat"`
+				Text struct{ Text string } `json:"text"`
+			} `json:"placePrediction"`
+		} `json:"suggestions"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	sugs := make([]Suggestion, 0, len(out.Suggestions))
+	for _, s := range out.Suggestions {
+		p := s.PlacePrediction
+		if p.PlaceID == "" {
+			continue
+		}
+		primary := p.StructuredFormat.MainText.Text
+		if primary == "" {
+			primary = p.Text.Text
+		}
+		sugs = append(sugs, Suggestion{
+			PlaceID:   p.PlaceID,
+			Primary:   primary,
+			Secondary: p.StructuredFormat.SecondaryText.Text,
+		})
+	}
+	return sugs, nil
+}
+
+// Reverse turns a coordinate into a short "where am I" label via the Geocoding
+// API, favouring the names Bangkok navigates by: the nearest BTS/MRT station,
+// then a named landmark, then the street or neighbourhood. Empty string only if
+// Geocoding returns nothing usable.
 func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (string, error) {
-	u := fmt.Sprintf("%s?latlng=%f,%f&key=%s&result_type=%s",
-		geocodeAPIURL, lat, lng, url.QueryEscape(c.APIKey),
-		url.QueryEscape("sublocality_level_1|neighborhood|locality|administrative_area_level_1"))
+	u := fmt.Sprintf("%s?latlng=%f,%f&key=%s", geocodeAPIURL, lat, lng, url.QueryEscape(c.APIKey))
 	if lc := langCode(lang); lc != "" {
 		u += "&language=" + lc
 	}
@@ -373,7 +496,8 @@ func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (st
 	var out struct {
 		Status  string `json:"status"`
 		Results []struct {
-			FormattedAddress  string `json:"formatted_address"`
+			FormattedAddress  string   `json:"formatted_address"`
+			Types             []string `json:"types"`
 			AddressComponents []struct {
 				LongName string   `json:"long_name"`
 				Types    []string `json:"types"`
@@ -384,17 +508,41 @@ func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (st
 		return "", err
 	}
 	if out.Status != "OK" || len(out.Results) == 0 {
-		return "", fmt.Errorf("reverse geocode: %s", out.Status)
+		return "", nil
 	}
 
-	want := []string{"sublocality_level_1", "neighborhood", "locality", "administrative_area_level_1"}
-	for _, pref := range want {
+	has := func(types []string, want ...string) bool {
+		for _, t := range types {
+			for _, w := range want {
+				if t == w {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// 1. nearest rail/transit station — how locals give directions.
+	for _, r := range out.Results {
+		if has(r.Types, "subway_station", "train_station", "transit_station", "light_rail_station") &&
+			len(r.AddressComponents) > 0 {
+			return r.AddressComponents[0].LongName, nil
+		}
+	}
+	// 2. a named place that isn't just a street address.
+	for _, r := range out.Results {
+		if has(r.Types, "point_of_interest", "establishment", "tourist_attraction", "shopping_mall") &&
+			!has(r.Types, "street_address", "premise", "subpremise", "route") &&
+			len(r.AddressComponents) > 0 {
+			return r.AddressComponents[0].LongName, nil
+		}
+	}
+	// 3. street / neighbourhood, most specific first.
+	for _, pref := range []string{"neighborhood", "sublocality_level_2", "route", "sublocality_level_1", "locality"} {
 		for _, r := range out.Results {
 			for _, comp := range r.AddressComponents {
-				for _, ty := range comp.Types {
-					if ty == pref && comp.LongName != "" {
-						return comp.LongName, nil
-					}
+				if has(comp.Types, pref) && comp.LongName != "" {
+					return comp.LongName, nil
 				}
 			}
 		}
@@ -403,9 +551,8 @@ func (c *Client) Reverse(ctx context.Context, lat, lng float64, lang string) (st
 		if i := strings.IndexByte(fa, ','); i > 0 {
 			return strings.TrimSpace(fa[:i]), nil
 		}
-		return fa, nil
 	}
-	return "", fmt.Errorf("reverse geocode: no label")
+	return "", nil
 }
 
 // --- Places (New) response shapes -------------------------------------------

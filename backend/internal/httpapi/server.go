@@ -68,6 +68,7 @@ func (s *Server) Router() http.Handler {
 		r.Get("/place", s.handlePlace)
 		r.Get("/list", s.handleList)
 		r.Get("/geocode", s.handleGeocode)
+		r.Get("/suggest", s.handleSuggest)
 		r.Get("/reverse", s.handleReverse)
 	})
 
@@ -323,11 +324,35 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if len(q) < 2 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "q is required"})
+	placeID := strings.TrimSpace(r.URL.Query().Get("placeId"))
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	lang := normLang(r.URL.Query().Get("lang"))
+	if placeID == "" && len(q) < 2 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "q or placeId is required"})
 		return
 	}
-	lang := normLang(r.URL.Query().Get("lang"))
+
+	// A placeId comes from an autocomplete pick — resolve it (and close the
+	// session), don't cache (it's a one-shot). Free-text queries are cached.
+	if placeID != "" {
+		var (
+			lat, lng float64
+			label    string
+			err      error
+		)
+		if s.Mock {
+			lat, lng, label = places.MockGeocode(placeID)
+		} else {
+			lat, lng, label, err = s.Places.PlaceLocation(r.Context(), placeID, token, lang)
+		}
+		if err != nil {
+			s.Log.Warn("place location", "err", err)
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "couldn't find that place"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"lat": lat, "lng": lng, "label": label})
+		return
+	}
 
 	key := "geo|" + strings.ToLower(q) + "|" + lang
 	if cached, ok := s.Cache.Get(key); ok {
@@ -352,6 +377,37 @@ func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
 	res := map[string]any{"lat": lat, "lng": lng, "label": label}
 	s.Cache.SetTTL(key, res, time.Hour)
 	writeJSON(w, http.StatusOK, res)
+}
+
+func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(q) < 2 {
+		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}})
+		return
+	}
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	lang := normLang(r.URL.Query().Get("lang"))
+	lat, _ := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+	lng, _ := strconv.ParseFloat(r.URL.Query().Get("lng"), 64)
+
+	var (
+		sugs []places.Suggestion
+		err  error
+	)
+	if s.Mock {
+		sugs = places.MockAutocomplete(q)
+	} else {
+		sugs, err = s.Places.Autocomplete(r.Context(), q, token, lang, lat, lng)
+		if err != nil {
+			s.Log.Warn("autocomplete", "err", err)
+			writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}})
+			return
+		}
+	}
+	if sugs == nil {
+		sugs = []places.Suggestion{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"suggestions": sugs})
 }
 
 func (s *Server) handleReverse(w http.ResponseWriter, r *http.Request) {

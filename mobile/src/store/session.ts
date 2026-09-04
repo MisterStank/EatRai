@@ -9,6 +9,9 @@ import type { Card, Lang, SortMode } from "../api/client";
 
 export const DEFAULT_RADIUS_M = 1000;
 
+export type RecentArea = { lat: number; lng: number; label: string };
+const MAX_RECENT = 5;
+
 export type FilterValue = {
   categories: string[];
   radiusM: number;
@@ -21,6 +24,7 @@ export type FilterValue = {
 type SessionState = FilterValue & {
   lang: Lang;
   liked: Card[];
+  recentAreas: RecentArea[];
   hintSeen: boolean;
   hydrated: boolean;
 
@@ -29,6 +33,7 @@ type SessionState = FilterValue & {
   addLiked: (c: Card) => void;
   removeLiked: (id: string) => void;
   clearLiked: () => void;
+  addRecentArea: (a: RecentArea) => void;
   markHintSeen: () => void;
   markHydrated: () => void;
 };
@@ -44,6 +49,7 @@ export const useSession = create<SessionState>()(
       priceLevels: [],
       sort: "near",
       liked: [],
+      recentAreas: [],
       hintSeen: false,
       hydrated: false,
 
@@ -54,6 +60,13 @@ export const useSession = create<SessionState>()(
         set((s) => (s.liked.some((x) => x.id === c.id) ? s : { liked: [...s.liked, c] })),
       removeLiked: (id) => set((s) => ({ liked: s.liked.filter((x) => x.id !== id) })),
       clearLiked: () => set({ liked: [] }),
+      addRecentArea: (a) =>
+        set((s) => {
+          const label = a.label.trim();
+          if (!label) return s;
+          const rest = s.recentAreas.filter((x) => x.label !== label);
+          return { recentAreas: [{ ...a, label }, ...rest].slice(0, MAX_RECENT) };
+        }),
       markHintSeen: () => set({ hintSeen: true }),
       markHydrated: () => set((s) => (s.hydrated ? s : { hydrated: true })),
     }),
@@ -69,6 +82,7 @@ export const useSession = create<SessionState>()(
         priceLevels: s.priceLevels,
         sort: s.sort,
         liked: s.liked,
+        recentAreas: s.recentAreas,
         hintSeen: s.hintSeen,
       }),
       onRehydrateStorage: () => () => {

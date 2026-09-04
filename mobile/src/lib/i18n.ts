@@ -53,7 +53,8 @@ const en = {
   search: "Search",
   confirmLocation: "Search here",
   pinnedNear: "Near {area}",
-  pinnedHere: "This spot",
+  pinnedHere: "Dropped pin here",
+  recentSearches: "Recent",
 
   // hint
   swipeHint: "Swipe to choose. Tap the photo to see more, tap the name for details.",
@@ -155,7 +156,8 @@ const th: Record<Key, string> = {
   search: "ค้นหา",
   confirmLocation: "ค้นหาที่นี่",
   pinnedNear: "ใกล้ {area}",
-  pinnedHere: "จุดนี้",
+  pinnedHere: "ปักหมุดตรงนี้",
+  recentSearches: "ล่าสุด",
 
   swipeHint: "ปัดเพื่อเลือก แตะรูปเพื่อดูเพิ่ม แตะชื่อเพื่อดูรายละเอียด",
   gotIt: "เข้าใจแล้ว",
