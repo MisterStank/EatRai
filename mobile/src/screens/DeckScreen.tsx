@@ -150,7 +150,14 @@ export function DeckScreen() {
         signal: ctrl.signal,
       });
       if (ctrl.signal.aborted) return;
-      const deck = next.filter((c) => !excluded.current.has(c.id));
+      // Read the current liked ids live (not via a subscribed selector) so a
+      // like doesn't recreate `load` and force a refetch — but an already-
+      // liked place should never reappear in the swipeable deck, even after
+      // a filter/location change or a widened search clears `excluded`.
+      const likedIds = useSession.getState().liked;
+      const deck = next.filter(
+        (c) => !excluded.current.has(c.id) && !likedIds.some((l) => l.id === c.id),
+      );
       const keepAt = keepId ? deck.findIndex((c) => c.id === keepId) : -1;
       setCards(deck);
       // Swipe history is positional (undo = "go back one index"), so it only
@@ -168,8 +175,12 @@ export function DeckScreen() {
     } finally {
       if (!ctrl.signal.aborted) setLoading(false);
     }
+    // lang/t are deliberately excluded: switching display language shouldn't
+    // reset the deck the user is mid-swipe through. The card data (e.g.
+    // cuisine labels) just keeps whatever language was active at the last
+    // real reload (filter/location/widen) until the next one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords, hydrated, effectiveRadius, categories, openNow, minRating, priceLevels, sort, lang, t]);
+  }, [coords, hydrated, effectiveRadius, categories, openNow, minRating, priceLevels, sort]);
 
   useEffect(() => {
     load();

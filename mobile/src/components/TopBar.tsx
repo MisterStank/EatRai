@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space(1.75),
-    maxWidth: 190,
+    width: 190,
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.line,
