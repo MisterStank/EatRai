@@ -69,16 +69,28 @@ export default async function handler(req, res) {
     : "";
 
   const tags = `
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content="${esc(desc)}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="EatRai" />
     <meta property="og:title" content="${esc(title)}" />
     <meta property="og:description" content="${esc(desc)}" />
+    <meta property="og:url" content="${esc(req.url ? `${base}${req.url}` : base)}" />
     <meta name="twitter:card" content="${card}" />
     <meta name="twitter:title" content="${esc(title)}" />
     <meta name="twitter:description" content="${esc(desc)}" />${imageTags}
   `;
-  html = html.replace("</head>", `${tags}</head>`);
+  // The homepage's generic meta/OG tags are already baked into index.html
+  // (app.json + public/index.html); strip them so the list-specific ones
+  // below don't duplicate. Shared lists are personal and ephemeral, so they
+  // also get noindex to keep them out of search results, while social
+  // unfurlers (LINE/FB/Slack/X, which ignore robots meta) still read the OG
+  // tags for link previews.
+  html = html
+    .replace(/<meta name="description"[^>]*>/, "")
+    .replace(/<meta property="og:[a-z_:]+"[^>]*>/g, "")
+    .replace(/<meta name="twitter:[a-z]+"[^>]*>/g, "")
+    .replace("</head>", `${tags}</head>`);
 
   res.setHeader("content-type", "text/html; charset=utf-8");
   res.setHeader("cache-control", "public, max-age=300, s-maxage=3600");

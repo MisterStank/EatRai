@@ -18,6 +18,12 @@
       "package": "app.eatrai.mobile",
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
+    "web": {
+      "name": "EatRai — ปัดเลือกร้านอาหารใกล้คุณ",
+      "lang": "th",
+      "description": "ปัดเลือกร้านอาหารใกล้คุณ ตัดสินใจไวว่าจะกินไรดี ไม่ต้องเถียงกันอีกต่อไป",
+      "themeColor": "#FF5A1F"
+    },
     "plugins": ["expo-location", "expo-font"],
     "extra": {}
   }
