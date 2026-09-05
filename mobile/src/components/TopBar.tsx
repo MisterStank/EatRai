@@ -25,10 +25,12 @@ export function TopBar({
   return (
     <View style={styles.bar}>
       <Pressable onPress={onLocation} style={styles.pill} hitSlop={6}>
-        <Feather name="map-pin" size={14} color={color.accent} />
-        <Text style={styles.pillText} numberOfLines={1}>
-          {locationLabel}
-        </Text>
+        <View style={styles.pillLabel}>
+          <Feather name="map-pin" size={14} color={color.accent} />
+          <Text style={styles.pillText} numberOfLines={1}>
+            {locationLabel}
+          </Text>
+        </View>
         <Feather name="chevron-down" size={13} color={color.inkFaint} />
       </Pressable>
 
@@ -75,8 +77,10 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space(1.75),
-    width: 190,
+    justifyContent: "space-between",
+    width: 150, // a little wider than "Near you" — the chevron stays pinned
+    // to this edge regardless of label length, rather than trailing right
+    // after the (possibly much shorter) text.
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.line,
@@ -84,6 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space(3.5),
     paddingVertical: space(2.25),
   },
+  pillLabel: { flexDirection: "row", alignItems: "center", gap: space(1.75), flexShrink: 1 },
   pillText: { color: color.ink, fontFamily: font.bodySemi, fontSize: 14, flexShrink: 1 },
   right: { flexDirection: "row", alignItems: "center", gap: space(2) },
   langBtn: {
