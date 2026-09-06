@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   close: {
     position: "absolute",
     top: space(4),
-    left: space(4.5),
+    right: space(4.5),
     width: 44,
     height: 44,
     borderRadius: 999,

@@ -14,6 +14,7 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
   const hydrated = useSession((s) => s.hydrated);
+  const origin = useSession((s) => s.recentAreas[0]);
   const [places, setPlaces] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Card | null>(null);
@@ -23,12 +24,12 @@ export function SharedListScreen({ ids }: { ids: string[] }) {
     if (!hydrated) return;
     const ctrl = new AbortController();
     setLoading(true);
-    getList(ids, { lang, signal: ctrl.signal })
+    getList(ids, { lang, lat: origin?.lat, lng: origin?.lng, signal: ctrl.signal })
       .then((res) => setPlaces(res))
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, [hydrated, lang]);
+  }, [hydrated, lang, origin?.lat, origin?.lng]);
 
   const goHome = () => {
     if (Platform.OS === "web" && typeof window !== "undefined") window.location.href = "/";

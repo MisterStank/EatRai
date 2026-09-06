@@ -82,11 +82,15 @@ export async function getPlace(
 // batched, cheaper field mask). Returns Cards, not full Places.
 export async function getList(
   ids: string[],
-  opts: { lang?: Lang; signal?: AbortSignal } = {},
+  opts: { lang?: Lang; lat?: number; lng?: number; signal?: AbortSignal } = {},
 ): Promise<Card[]> {
   if (!ids.length) return [];
   const p = new URLSearchParams({ ids: ids.slice(0, 25).join(",") });
   if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+  if (opts.lat != null && opts.lng != null) {
+    p.set("lat", String(opts.lat));
+    p.set("lng", String(opts.lng));
+  }
   const res = await fetch(`${BASE}/list?${p.toString()}`, { signal: opts.signal });
   if (!res.ok) throw await readError(res, "Couldn't load that list");
   const data = (await res.json()) as { places: Card[] };

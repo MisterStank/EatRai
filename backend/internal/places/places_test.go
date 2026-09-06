@@ -93,3 +93,15 @@ func TestRankPreference(t *testing.T) {
 		t.Fatal("default -> DISTANCE")
 	}
 }
+
+func TestDistanceM(t *testing.T) {
+	// A real Bangkok origin -> a plausible short distance.
+	if d := distanceM(13.7563, 100.5018, 13.7650, 100.5380); d < 3000 || d > 5000 {
+		t.Fatalf("bangkok distance = %d m, want ~4 km", d)
+	}
+	// Null-island origin (a shared list opened without a viewer location) must
+	// report 0 = unknown, not an 11,000 km haversine from (0, 0).
+	if d := distanceM(0, 0, 13.7650, 100.5380); d != 0 {
+		t.Fatalf("null-island origin distance = %d m, want 0", d)
+	}
+}

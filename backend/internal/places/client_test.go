@@ -137,7 +137,7 @@ func TestGetPlaceLite(t *testing.T) {
 		gotMask = r.Header.Get("X-Goog-FieldMask")
 		return jsonResp(200, apiPlaceJSON)
 	})
-	card, err := c.GetPlaceLite(context.Background(), "place1", "en", "https://api.example")
+	card, err := c.GetPlaceLite(context.Background(), "place1", "en", "https://api.example", 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

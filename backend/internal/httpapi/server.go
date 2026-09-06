@@ -279,6 +279,11 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lang := normLang(r.URL.Query().Get("lang"))
+	lat, _ := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
+	lng, _ := strconv.ParseFloat(r.URL.Query().Get("lng"), 64)
+	if lat < -90 || lat > 90 || lng < -180 || lng > 180 {
+		lat, lng = 0, 0
+	}
 
 	var ids []string
 	seen := map[string]bool{}
@@ -302,7 +307,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 	sem := make(chan struct{}, 8)
 	var wg sync.WaitGroup
 	for i, id := range ids {
-		key := "lite|" + id + "|" + lang
+		key := fmt.Sprintf("lite|%s|%s|%.3f,%.3f", id, lang, round3(lat), round3(lng))
 		if cached, ok := s.Cache.Get(key); ok {
 			if c, ok := cached.(places.Card); ok {
 				out[i] = c
@@ -316,7 +321,7 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 			defer func() { <-sem }()
 			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 			defer cancel()
-			c, err := s.Places.GetPlaceLite(ctx, id, lang, base)
+			c, err := s.Places.GetPlaceLite(ctx, id, lang, base, lat, lng)
 			if err != nil {
 				s.Log.Warn("list resolve", "id", id, "err", err)
 				return

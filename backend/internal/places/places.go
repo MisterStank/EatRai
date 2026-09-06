@@ -172,12 +172,12 @@ func (c *Client) GetPlace(ctx context.Context, id, lang, photoBase string, lat, 
 // GetPlaceLite resolves one place ID to a Card only, on the cheaper field-mask
 // tier. Used to render a shared list without paying for full details on every
 // row.
-func (c *Client) GetPlaceLite(ctx context.Context, id, lang, photoBase string) (Card, error) {
+func (c *Client) GetPlaceLite(ctx context.Context, id, lang, photoBase string, lat, lng float64) (Card, error) {
 	p, err := c.placeDetails(ctx, id, lang, liteDetailMask)
 	if err != nil {
 		return Card{}, err
 	}
-	return p.toCard(0, 0, photoBase, nearbyPhotos, langCode(lang)), nil
+	return p.toCard(lat, lng, photoBase, nearbyPhotos, langCode(lang)), nil
 }
 
 func (c *Client) placeDetails(ctx context.Context, id, lang, mask string) (apiPlace, error) {
@@ -725,7 +725,7 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang
 		Rating:      p.Rating,
 		RatingCount: p.UserRatingCount,
 		Cuisines:    cuisines(p.Types, p.PrimaryTypeDisp.Text, lang),
-		DistanceM:   int(math.Round(haversineM(lat, lng, p.Location.Latitude, p.Location.Longitude))),
+		DistanceM:   distanceM(lat, lng, p.Location.Latitude, p.Location.Longitude),
 		MapsURI:     p.GoogleMapsURI,
 	}
 	if p.CurrentOpeningHours.OpenNow != nil {
@@ -935,6 +935,16 @@ func clampRadius(m float64) float64 {
 		return 50000
 	}
 	return m
+}
+
+// distanceM is haversine in metres, but returns 0 ("unknown") when the origin
+// is the null-island default — a shared list opened without a viewer location
+// must not render an 11,000 km distance from (0, 0).
+func distanceM(lat1, lon1, lat2, lon2 float64) int {
+	if lat1 == 0 && lon1 == 0 {
+		return 0
+	}
+	return int(math.Round(haversineM(lat1, lon1, lat2, lon2)))
 }
 
 func haversineM(lat1, lon1, lat2, lon2 float64) float64 {
