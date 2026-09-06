@@ -37,6 +37,12 @@ const en = {
   nLiked: "See your {n} liked places",
   howToUse: "How to use",
 
+  // menu
+  menu: "Menu",
+  giveFeedback: "Give feedback / Report bugs",
+  supportDev: "Support the developer",
+  comingSoon: "Coming soon",
+
   // decide
   decideForMe: "Decide for me",
   decideFromSaved: "Decide from your {n} saved",
@@ -135,6 +141,7 @@ const en = {
   a11yDirections: "Directions",
   a11yFilters: "Filters",
   a11yHelp: "How to use",
+  a11yMenu: "Menu",
   a11yLanguage: "Switch language",
   a11yDecide: "Decide for me",
   a11yPhotoNext: "Next photo",
@@ -176,6 +183,11 @@ const th: Record<Key, string> = {
   seeYourN: "ดู {n} ร้านที่ชอบ",
   nLiked: "ดู {n} ร้านที่ชอบ",
   howToUse: "วิธีใช้",
+
+  menu: "เมนู",
+  giveFeedback: "ส่งความคิดเห็น / แจ้งปัญหา",
+  supportDev: "สนับสนุนผู้พัฒนา",
+  comingSoon: "เร็ว ๆ นี้",
 
   decideForMe: "เลือกให้เลย",
   decideFromSaved: "เลือกให้จาก {n} ร้านที่บันทึก",
@@ -266,6 +278,7 @@ const th: Record<Key, string> = {
   a11yDirections: "เส้นทาง",
   a11yFilters: "ตัวกรอง",
   a11yHelp: "วิธีใช้",
+  a11yMenu: "เมนู",
   a11yLanguage: "เปลี่ยนภาษา",
   a11yDecide: "เลือกให้เลย",
   a11yPhotoNext: "รูปถัดไป",

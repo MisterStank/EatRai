@@ -16,6 +16,7 @@ import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { HelpSheet } from "../components/HelpSheet";
+import { InfoSheet } from "../components/InfoSheet";
 import { GuidePrompt } from "../components/GuidePrompt";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { MapLocationScreen } from "../components/MapLocationScreen";
@@ -72,6 +73,7 @@ export function DeckScreen() {
   const [showDecide, setShowDecide] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [infoKey, setInfoKey] = useState<"feedback" | "support" | null>(null);
   const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
@@ -275,7 +277,8 @@ export function DeckScreen() {
       !!detail ||
       showHint ||
       showHelp ||
-      showGuidePrompt;
+      showGuidePrompt ||
+      infoKey !== null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "?" && !anyModal) {
         setShowHelp(true);
@@ -289,7 +292,7 @@ export function DeckScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt]);
+  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt, infoKey]);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dragX.value, [40, 130], [0, 0.55], Extrapolation.CLAMP),
@@ -312,6 +315,8 @@ export function DeckScreen() {
           onLocation={() => setShowLocation(true)}
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
+          onFeedback={() => setInfoKey("feedback")}
+          onSupport={() => setInfoKey("support")}
         />
 
         <View style={[styles.deck, { marginBottom: insets.bottom + deckReserve }]}>
@@ -410,6 +415,11 @@ export function DeckScreen() {
         onClose={() => setShowLiked(false)}
       />
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
+      <InfoSheet
+        visible={infoKey !== null}
+        title={infoKey === "feedback" ? t("giveFeedback") : t("supportDev")}
+        onClose={() => setInfoKey(null)}
+      />
       <GuidePrompt
         visible={showGuidePrompt}
         onShowMe={acceptGuide}
