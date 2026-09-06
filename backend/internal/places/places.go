@@ -768,23 +768,44 @@ func firstNonEmpty(vals ...string) string {
 // Search phrase, per language. Every category is a text query now — Text Search
 // is the only Places endpoint that also filters by rating and price.
 var categoryQueryText = map[string]map[string]string{
-	"thai":       {"en": "Thai restaurant", "th": "ร้านอาหารไทย"},
-	"isaan":      {"en": "Isaan Northeastern Thai food", "th": "อาหารอีสาน ส้มตำ"},
+	// dish
+	"tamsang":    {"en": "Thai food made to order rice curry", "th": "ร้านอาหารตามสั่ง ข้าวราดแกง"},
 	"noodles":    {"en": "noodle shop", "th": "ก๋วยเตี๋ยว บะหมี่"},
-	"street":     {"en": "street food", "th": "สตรีทฟู้ด อาหารริมทาง"},
+	"somtam":     {"en": "som tam papaya salad grilled chicken", "th": "ส้มตำ ไก่ย่าง"},
+	"padthai":    {"en": "pad thai", "th": "ผัดไทย"},
+	"moopping":   {"en": "grilled pork skewers sticky rice", "th": "หมูปิ้ง ข้าวเหนียว"},
+	"khaomankai": {"en": "chicken rice pork rice shop", "th": "ข้าวมันไก่ ข้าวหมูแดง ข้าวหมูกรอบ"},
+	"khakhamoo":  {"en": "stewed pork leg rice khao kha mu", "th": "ข้าวขาหมู"},
+	"raadna":     {"en": "rad na pad see ew stir-fried noodles", "th": "ราดหน้า ผัดซีอิ๊ว"},
+	"jok":        {"en": "congee rice porridge", "th": "โจ๊ก ข้าวต้ม"},
+	"mala":       {"en": "mala spicy hotpot skewers", "th": "หม่าล่า หมาล่า"},
 	"seafood":    {"en": "seafood restaurant", "th": "ร้านซีฟู้ด อาหารทะเล"},
-	"japanese":   {"en": "Japanese restaurant sushi ramen", "th": "ร้านอาหารญี่ปุ่น ซูชิ ราเมง"},
+	"steak":      {"en": "steak restaurant", "th": "ร้านสเต็ก"},
+
+	// regional
+	"isaan": {"en": "Isaan Northeastern Thai food larb", "th": "อาหารอีสาน ลาบ น้ำตก ส้มตำ"},
+	"nuea":  {"en": "Northern Thai Lanna food khao soi", "th": "อาหารเหนือ ข้าวซอย น้ำเงี้ยว"},
+	"tai":   {"en": "Southern Thai food", "th": "อาหารใต้ แกงใต้ ข้าวยำ"},
+	"thai":  {"en": "Thai restaurant", "th": "ร้านอาหารไทย"},
+
+	// vibe
+	"street":     {"en": "street food", "th": "สตรีทฟู้ด อาหารริมทาง"},
+	"buffet":     {"en": "buffet shabu sukiyaki hotpot", "th": "บุฟเฟ่ต์ ชาบู สุกี้"},
+	"bbq":        {"en": "mookata barbecue grill", "th": "หมูกระทะ ปิ้งย่าง"},
 	"cafe":       {"en": "cafe coffee shop", "th": "คาเฟ่ ร้านกาแฟ"},
+	"drinks":     {"en": "bubble tea milk tea drinks", "th": "ชานมไข่มุก ชาไทย เครื่องดื่ม"},
 	"bar":        {"en": "bar pub", "th": "บาร์ ผับ"},
-	"bbq":        {"en": "barbecue grill mookata", "th": "ปิ้งย่าง หมูกระทะ"},
 	"dessert":    {"en": "dessert ice cream shop", "th": "ร้านของหวาน ไอศกรีม"},
 	"vegetarian": {"en": "vegetarian vegan restaurant", "th": "ร้านอาหารมังสวิรัติ เจ"},
-	"chinese":    {"en": "Chinese restaurant", "th": "ร้านอาหารจีน"},
-	"korean":     {"en": "Korean restaurant", "th": "ร้านอาหารเกาหลี"},
-	"indian":     {"en": "Indian restaurant", "th": "ร้านอาหารอินเดีย"},
-	"italian":    {"en": "Italian restaurant", "th": "ร้านอาหารอิตาเลียน"},
-	"pizza":      {"en": "pizza restaurant", "th": "ร้านพิซซ่า"},
-	"burgers":    {"en": "burger restaurant", "th": "ร้านเบอร์เกอร์"},
+
+	// international
+	"japanese": {"en": "Japanese restaurant sushi ramen", "th": "ร้านอาหารญี่ปุ่น ซูชิ ราเมง"},
+	"korean":   {"en": "Korean restaurant", "th": "ร้านอาหารเกาหลี"},
+	"chinese":  {"en": "Chinese restaurant", "th": "ร้านอาหารจีน"},
+	"indian":   {"en": "Indian restaurant", "th": "ร้านอาหารอินเดีย"},
+	"italian":  {"en": "Italian restaurant", "th": "ร้านอาหารอิตาเลียน"},
+	"pizza":    {"en": "pizza restaurant", "th": "ร้านพิซซ่า"},
+	"burgers":  {"en": "burger restaurant", "th": "ร้านเบอร์เกอร์"},
 }
 
 func defaultQuery(lang string) string {
