@@ -29,19 +29,19 @@ export function ActionBar({
         hitSlop={8}
         accessibilityLabel={t("a11yUndo")}
       >
-        <Feather name="rotate-ccw" size={19} color={color.inkSoft} />
+        <Feather name="rotate-ccw" size={18} color={color.inkSoft} />
       </Pressable>
 
       <Pressable onPress={onNope} disabled={disabled} style={[styles.btn, styles.nope, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yPass")}>
-        <Feather name="x" size={26} color={color.nope} />
+        <Feather name="x" size={24} color={color.nope} />
       </Pressable>
 
       <Pressable onPress={onLike} disabled={disabled} style={[styles.btn, styles.like, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yLike")}>
-        <Feather name="heart" size={28} color={color.like} />
+        <Feather name="heart" size={26} color={color.like} />
       </Pressable>
 
       <Pressable onPress={onDirections} disabled={disabled} style={[styles.btn, styles.sm, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yDirections")}>
-        <Feather name="navigation" size={19} color={color.inkSoft} />
+        <Feather name="navigation" size={18} color={color.inkSoft} />
       </Pressable>
     </View>
   );
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 20,
+    gap: 18,
   },
   btn: {
     backgroundColor: color.surface,
@@ -70,8 +70,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadow,
   },
-  sm: { width: 48, height: 48, borderRadius: 999 },
-  nope: { width: 62, height: 62, borderRadius: 999 },
-  like: { width: 72, height: 72, borderRadius: 999 },
+  sm: { width: 46, height: 46, borderRadius: 999 },
+  nope: { width: 58, height: 58, borderRadius: 999 },
+  like: { width: 66, height: 66, borderRadius: 999 },
   faded: { opacity: 0.4 },
 });

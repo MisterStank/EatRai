@@ -31,6 +31,13 @@ const LOCATE_TIMEOUT_MS = 12000;
 export function DeckScreen() {
   const insets = useSafeAreaInsets();
   const t = useT();
+  // Mobile-first: one vertical rhythm everywhere. These standoffs for the
+  // floating action bar / liked pill are sized so the whole deck still fits
+  // on the shortest target (iPhone SE ≈ 667pt) — desktop just centres the
+  // same layout in a 480pt column.
+  const deckReserve = space(30);
+  const pillOffset = space(19);
+  const actionsOffset = space(3);
 
   const lang = useSession((s) => s.lang);
   const categories = useSession((s) => s.categories);
@@ -307,7 +314,7 @@ export function DeckScreen() {
           onHelp={() => setShowHelp(true)}
         />
 
-        <View style={[styles.deck, { marginBottom: insets.bottom + space(38) }]}>
+        <View style={[styles.deck, { marginBottom: insets.bottom + deckReserve }]}>
           <Animated.View pointerEvents="none" style={[styles.glow, styles.glowLike, glowStyle]}>
             <LinearGradient colors={["transparent", "rgba(18,183,106,0.4)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
           </Animated.View>
@@ -370,14 +377,14 @@ export function DeckScreen() {
         </View>
 
         {liked.length > 0 && !deckDone ? (
-          <Pressable style={[styles.likedPill, { bottom: insets.bottom + space(23) }]} onPress={() => setShowLiked(true)}>
+          <Pressable style={[styles.likedPill, { bottom: insets.bottom + pillOffset }]} onPress={() => setShowLiked(true)}>
             <Feather name="heart" size={13} color={color.like} />
             <Text style={styles.likedPillText}>{t("nLiked", { n: liked.length })}</Text>
             <Feather name="chevron-right" size={14} color={color.inkFaint} />
           </Pressable>
         ) : null}
 
-        <View style={[styles.actions, { bottom: insets.bottom + space(4) }]}>
+        <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
           <ActionBar
             onUndo={undo}
             onNope={() => resolve("nope")}
@@ -457,11 +464,14 @@ function haptic(kind: "success" | "light") {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.paper, alignItems: "center" },
-  frame: { flex: 1, width: "100%", maxWidth: 480 },
+  root: { flex: 1, backgroundColor: color.paper, alignItems: "center", justifyContent: "center" },
+  // Mobile-first: the app is one phone-sized column. On a larger viewport it
+  // stays that size and centres, so desktop and mobile render the same layout
+  // rather than stretching the card to fill a tall window.
+  frame: { flex: 1, width: "100%", maxWidth: 412, maxHeight: 880 },
   deck: {
     flex: 1,
-    marginTop: space(3.5),
+    marginTop: space(3),
     marginHorizontal: space(4.5),
     alignItems: "center",
     justifyContent: "center",

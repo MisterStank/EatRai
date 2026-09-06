@@ -21,7 +21,6 @@ export function TopBar({
   const t = useT();
   const lang = useSession((s) => s.lang);
   const setLang = useSession((s) => s.setLang);
-
   return (
     <View style={styles.bar}>
       <Pressable onPress={onLocation} style={styles.pill} hitSlop={6}>
@@ -78,9 +77,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    width: 150, // a little wider than "Near you" — the chevron stays pinned
-    // to this edge regardless of label length, rather than trailing right
-    // after the (possibly much shorter) text.
+    // Fixed target width, but allowed to shrink (label ellipsises) so the
+    // language / filter buttons never get pushed off a 375pt screen.
+    width: 168,
+    flexShrink: 1,
+    minWidth: 0,
+    marginRight: space(1.5),
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.line,
@@ -90,7 +92,7 @@ const styles = StyleSheet.create({
   },
   pillLabel: { flexDirection: "row", alignItems: "center", gap: space(1.75), flexShrink: 1 },
   pillText: { color: color.ink, fontFamily: font.bodySemi, fontSize: 14, flexShrink: 1 },
-  right: { flexDirection: "row", alignItems: "center", gap: space(2) },
+  right: { flexDirection: "row", alignItems: "center", gap: space(1.75), flexShrink: 0 },
   langBtn: {
     minWidth: 44,
     height: 44,
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderWidth: 1,
     borderColor: color.line,
-    paddingHorizontal: space(2.75),
+    paddingHorizontal: space(2.5),
   },
   helpText: { fontFamily: font.bodySemi, fontSize: 12.5, color: color.ink },
   filterBtn: {
