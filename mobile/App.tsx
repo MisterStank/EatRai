@@ -19,6 +19,20 @@ import { SharedListScreen } from "./src/screens/SharedListScreen";
 import { parseSharedList } from "./src/lib/sharing";
 import { color } from "./src/theme/tokens";
 
+// Web only: the browser draws a square black focus ring on text inputs, which
+// clashes with the app's rounded search field (it shows focus via its own
+// border + shadow already). Strip it once, globally.
+if (Platform.OS === "web" && typeof document !== "undefined") {
+  const id = "eatrai-no-input-outline";
+  if (!document.getElementById(id)) {
+    const s = document.createElement("style");
+    s.id = id;
+    s.textContent =
+      "input:focus,input:focus-visible,textarea:focus,textarea:focus-visible{outline:none!important;box-shadow:none;}";
+    document.head.appendChild(s);
+  }
+}
+
 export default function App() {
   const [loaded] = useFonts({
     Kanit_600SemiBold,
