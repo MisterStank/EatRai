@@ -17,6 +17,7 @@ import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { HelpSheet } from "../components/HelpSheet";
 import { InfoSheet } from "../components/InfoSheet";
+import { FeedbackSheet } from "../components/FeedbackSheet";
 import { GuidePrompt } from "../components/GuidePrompt";
 import { RestaurantSheet } from "../components/RestaurantSheet";
 import { MapLocationScreen } from "../components/MapLocationScreen";
@@ -73,7 +74,8 @@ export function DeckScreen() {
   const [showDecide, setShowDecide] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [infoKey, setInfoKey] = useState<"feedback" | "support" | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [infoKey, setInfoKey] = useState<"support" | null>(null);
   const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
@@ -315,7 +317,7 @@ export function DeckScreen() {
           onLocation={() => setShowLocation(true)}
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
-          onFeedback={() => setInfoKey("feedback")}
+          onFeedback={() => setShowFeedback(true)}
           onSupport={() => setInfoKey("support")}
         />
 
@@ -415,9 +417,10 @@ export function DeckScreen() {
         onClose={() => setShowLiked(false)}
       />
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
+      <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <InfoSheet
         visible={infoKey !== null}
-        title={infoKey === "feedback" ? t("giveFeedback") : t("supportDev")}
+        title={t("supportDev")}
         onClose={() => setInfoKey(null)}
       />
       <GuidePrompt
