@@ -1,0 +1,14 @@
+# Normalize line endings: store everything as LF in the repo, check out LF
+# everywhere. Prevents Windows/WSL editors from rewriting whole files as CRLF.
+* text=auto eol=lf
+
+# Binary files: never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
