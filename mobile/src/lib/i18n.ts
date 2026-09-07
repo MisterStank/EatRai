@@ -11,7 +11,10 @@ const en = {
   // filters
   filters: "Filters",
   reset: "Reset",
-  intoWhat: "What are you into?",
+  catSecDish: "What dish?",
+  catSecRegional: "Thai regional",
+  catSecVibe: "What vibe?",
+  catSecIntl: "International",
   howFar: "How far?",
   minRatingLabel: "Minimum rating",
   anyRating: "Any",
@@ -159,7 +162,10 @@ const th: Record<Key, string> = {
 
   filters: "ตัวกรอง",
   reset: "ล้าง",
-  intoWhat: "อยากกินอะไร?",
+  catSecDish: "จานไหน",
+  catSecRegional: "ภาคไหน",
+  catSecVibe: "แบบไหน",
+  catSecIntl: "ต่างชาติ",
   howFar: "ระยะทาง",
   minRatingLabel: "คะแนนขั้นต่ำ",
   anyRating: "ทั้งหมด",

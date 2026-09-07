@@ -22,6 +22,31 @@ func TestCategoryQueries(t *testing.T) {
 	}
 }
 
+// TestCategoryQueryTextCoverage guards the "key must match the backend" contract
+// in mobile/src/lib/categories.ts — every friendly key the app can send must
+// resolve to a real Text Search phrase, or that category silently returns the
+// literal key as a search term.
+func TestCategoryQueryTextCoverage(t *testing.T) {
+	// Keep in sync with CATEGORIES in mobile/src/lib/categories.ts.
+	appKeys := []string{
+		"tamsang", "noodles", "somtam", "padthai", "moopping", "khaomankai",
+		"khakhamoo", "raadna", "jok", "mala", "seafood", "steak",
+		"isaan", "nuea", "tai", "thai",
+		"street", "buffet", "bbq", "cafe", "drinks", "bar", "dessert", "vegetarian",
+		"japanese", "korean", "chinese", "indian", "italian", "pizza", "burgers",
+	}
+	for _, k := range appKeys {
+		phrases, ok := categoryQueryText[k]
+		if !ok {
+			t.Errorf("category %q has no categoryQueryText entry", k)
+			continue
+		}
+		if phrases["en"] == "" || phrases["th"] == "" {
+			t.Errorf("category %q missing en/th phrase: %v", k, phrases)
+		}
+	}
+}
+
 func TestDefaultQuery(t *testing.T) {
 	if defaultQuery("th") != "ร้านอาหาร" || defaultQuery("") != "restaurant" {
 		t.Fatal("bad default query")

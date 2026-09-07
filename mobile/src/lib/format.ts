@@ -27,6 +27,24 @@ export const fmtPriceRange = (pr?: PriceRange | null): string => {
   return "";
 };
 
+// fmtPriceBand labels a Google price level (1–4) as an approximate per-person
+// THB band, for the filter chips. The filter itself still selects by level —
+// these are just friendlier names than ฿ / ฿฿ / ฿฿฿ / ฿฿฿฿.
+export const fmtPriceBand = (level: number): string => {
+  switch (level) {
+    case 1:
+      return "฿1–100";
+    case 2:
+      return "฿100–250";
+    case 3:
+      return "฿250–500";
+    case 4:
+      return "฿500+";
+    default:
+      return "฿".repeat(Math.max(1, level));
+  }
+};
+
 export const fmtCuisines = (c: string[]): string => c.slice(0, 3).join(" · ");
 
 export const fmtRating = (r: number): string => (r > 0 ? r.toFixed(1) : "");

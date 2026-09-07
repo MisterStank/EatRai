@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { color, font, radius, space } from "../theme/tokens";
-import { CATEGORIES, RADII, catLabel } from "../lib/categories";
-import { fmtDistance } from "../lib/format";
-import { useT } from "../lib/i18n";
+import { CATEGORIES, CAT_SECTIONS, RADII, catLabel, type CatSection } from "../lib/categories";
+import { fmtDistance, fmtPriceBand } from "../lib/format";
+import { useT, type TKey } from "../lib/i18n";
 import { useSession, DEFAULT_RADIUS_M, type FilterValue } from "../store/session";
 
 export type Filters = FilterValue;
 
 const RATINGS = [0, 3.5, 4, 4.5];
 const PRICES = [1, 2, 3, 4];
+
+const SECTION_TKEY: Record<CatSection, TKey> = {
+  dish: "catSecDish",
+  regional: "catSecRegional",
+  vibe: "catSecVibe",
+  intl: "catSecIntl",
+};
 
 export function FilterSheet({
   visible,
@@ -71,23 +78,27 @@ export function FilterSheet({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space(3) }}>
-          <Text style={styles.label}>{t("intoWhat")}</Text>
-          <View style={styles.chips}>
-            {CATEGORIES.map((c) => {
-              const on = cats.includes(c.key);
-              return (
-                <Pressable
-                  key={c.key}
-                  onPress={() => toggle(c.key)}
-                  style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
-                >
-                  <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>
-                    {catLabel(c, lang)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {CAT_SECTIONS.map((section) => (
+            <View key={section}>
+              <Text style={styles.label}>{t(SECTION_TKEY[section])}</Text>
+              <View style={styles.chips}>
+                {CATEGORIES.filter((c) => c.section === section).map((c) => {
+                  const on = cats.includes(c.key);
+                  return (
+                    <Pressable
+                      key={c.key}
+                      onPress={() => toggle(c.key)}
+                      style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
+                    >
+                      <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>
+                        {catLabel(c, lang)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
 
           <Text style={styles.label}>{t("howFar")}</Text>
           <View style={styles.segmented}>
@@ -126,7 +137,7 @@ export function FilterSheet({
                   style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
                 >
                   <Text style={[styles.chipText, on ? styles.chipTextOn : styles.chipTextOff]}>
-                    {"฿".repeat(p)}
+                    {fmtPriceBand(p)}
                   </Text>
                 </Pressable>
               );
