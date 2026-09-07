@@ -1,5 +1,14 @@
 import "react-native-gesture-handler/jestSetup";
 
+import { useSession } from "./src/store/session";
+
+// The app default language is Thai (see session store). Component tests assert
+// against the English UI strings, so pin the language to "en" for tests. This
+// file is a `setupFiles` entry (runs once per test file, before the test
+// framework), so set it directly rather than in a `beforeEach`. Tests that
+// exercise Thai can still call useSession.setState({ lang: "th" }).
+useSession.setState({ lang: "en" });
+
 // The real native view manager backing SafeAreaProvider/SafeAreaView doesn't
 // exist in the test renderer — without this mock, SafeAreaProvider silently
 // renders no children at all instead of erroring, which looks like "nothing
