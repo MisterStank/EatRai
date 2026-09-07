@@ -43,7 +43,7 @@ type SessionState = FilterValue & {
 export const useSession = create<SessionState>()(
   persist(
     (set) => ({
-      lang: "en",
+      lang: "th",
       categories: [],
       radiusM: DEFAULT_RADIUS_M,
       openNow: false,
