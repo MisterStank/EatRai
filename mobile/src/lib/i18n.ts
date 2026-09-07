@@ -43,6 +43,8 @@ const en = {
   // menu
   menu: "Menu",
   giveFeedback: "Give feedback / Report bugs",
+  feedbackBlurb: "Your feedback opens in a browser. It's anonymous unless you leave your email.",
+  openFeedbackForm: "Open feedback form",
   supportDev: "Support the developer",
   comingSoon: "Coming soon",
 
@@ -192,6 +194,8 @@ const th: Record<Key, string> = {
 
   menu: "เมนู",
   giveFeedback: "ส่งความคิดเห็น / แจ้งปัญหา",
+  feedbackBlurb: "แบบฟอร์มจะเปิดในเบราว์เซอร์ ไม่ระบุตัวตนเว้นแต่คุณจะกรอกอีเมล",
+  openFeedbackForm: "เปิดแบบฟอร์ม",
   supportDev: "สนับสนุนผู้พัฒนา",
   comingSoon: "เร็ว ๆ นี้",
 
