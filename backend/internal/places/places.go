@@ -40,8 +40,13 @@ const (
 		"userRatingCount,types,primaryTypeDisplayName,photos,googleMapsUri," +
 		"currentOpeningHours.openNow"
 
+	// Photo passthrough is the single largest Places cost line, but a photo is
+	// only billed when /photo is actually fetched and each unique photo is
+	// edge-cached for a year — so these counts mostly bound the cold-start
+	// unique-photo universe, not steady-state cost. Keep the deck carousel at 5;
+	// trim the detail gallery 10 -> 5. See docs/COST_AND_MONETIZATION_PLAN.md Part 5.
 	nearbyPhotos = 5
-	detailPhotos = 10
+	detailPhotos = 5
 )
 
 // PriceRange is a per-person spend band from Google (e.g. ฿200–400). Nil when
@@ -50,6 +55,14 @@ type PriceRange struct {
 	Start    int    `json:"start,omitempty"` // 0 = no lower bound given
 	End      int    `json:"end,omitempty"`   // 0 = no upper bound given
 	Currency string `json:"currency"`        // ISO 4217, e.g. "THB"
+}
+
+// LatLng is a place's coordinate, sent so the client can compute an exact
+// distance from the user's true position (the /nearby search point is snapped to
+// a grid cell, so a server-side distance would be off by up to ~cell size).
+type LatLng struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
 }
 
 // Card is what the app renders. Stable JSON shape shared with the mobile client.
@@ -63,7 +76,8 @@ type Card struct {
 	RatingCount int         `json:"ratingCount"`
 	PhotoURLs   []string    `json:"photoUrls"`
 	Cuisines    []string    `json:"cuisines"`
-	DistanceM   int         `json:"distanceM"`
+	Location    LatLng      `json:"location"`
+	DistanceM   int         `json:"distanceM"` // server-computed; 0/unset on /nearby (client computes from Location)
 	OpenNow     bool        `json:"openNow"`
 	OpenKnown   bool        `json:"openKnown"`
 	MapsURI     string      `json:"mapsUri"`
@@ -211,9 +225,43 @@ func (c *Client) placeDetails(ctx context.Context, id, lang, mask string) (apiPl
 	return p, nil
 }
 
+// postSearchText runs one Text Search (New) call with the given request body and
+// returns the raw places.
+func (c *Client) postSearchText(ctx context.Context, body map[string]any) ([]apiPlace, error) {
+	reqBody, _ := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchTextURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Goog-Api-Key", c.APIKey)
+	req.Header.Set("X-Goog-FieldMask", searchMask)
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error struct{ Message string } `json:"error"`
+		}
+		json.NewDecoder(resp.Body).Decode(&e)
+		return nil, fmt.Errorf("searchText %d: %s", resp.StatusCode, e.Error.Message)
+	}
+	var out struct {
+		Places []apiPlace `json:"places"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out.Places, nil
+}
+
 // searchText is one Text Search (New) call: a free-text query, optionally
 // constrained to a single place type, with the query's rating / price / open /
-// sort filters applied server-side and biased to the search circle.
+// sort filters applied server-side and biased to the search circle. Used by the
+// legacy Search path.
 func (c *Client) searchText(ctx context.Context, textQuery, includedType string, q Query) ([]Card, error) {
 	body := map[string]any{
 		"textQuery":      textQuery,
@@ -241,37 +289,13 @@ func (c *Client) searchText(ctx context.Context, textQuery, includedType string,
 	if lc := langCode(q.Lang); lc != "" {
 		body["languageCode"] = lc
 	}
-	reqBody, _ := json.Marshal(body)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchTextURL, bytes.NewReader(reqBody))
+	got, err := c.postSearchText(ctx, body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Goog-Api-Key", c.APIKey)
-	req.Header.Set("X-Goog-FieldMask", searchMask)
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		var e struct {
-			Error struct{ Message string } `json:"error"`
-		}
-		json.NewDecoder(resp.Body).Decode(&e)
-		return nil, fmt.Errorf("searchText %d: %s", resp.StatusCode, e.Error.Message)
-	}
-
-	var out struct {
-		Places []apiPlace `json:"places"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
-	cards := make([]Card, 0, len(out.Places))
-	for _, p := range out.Places {
+	cards := make([]Card, 0, len(got))
+	for _, p := range got {
 		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, langCode(q.Lang))
 		if int(card.DistanceM) > int(clampRadius(q.RadiusM)) {
 			continue
@@ -280,6 +304,51 @@ func (c *Client) searchText(ctx context.Context, textQuery, includedType string,
 			continue
 		}
 		cards = append(cards, card)
+	}
+	return cards, nil
+}
+
+// SearchCuisine is the cost-collapsed /nearby path: exactly one Text Search
+// call, keyed only on (cell, cuisine, lang, radiusBucket). No open-now / rating /
+// price / sort — the client filters those. Distance is left unset (0); the
+// client computes it from Card.Location and the user's true position. An empty
+// cuisine means a generic "restaurant" search. See
+// docs/COST_AND_MONETIZATION_PLAN.md Part 1.
+func (c *Client) SearchCuisine(ctx context.Context, cellLat, cellLng float64, cuisine string, radiusBucket int, lang, photoBase string) ([]Card, error) {
+	textQuery := defaultQuery(lang)
+	if cuisine != "" {
+		if qs := categoryQueries([]string{cuisine}, lang); len(qs) > 0 {
+			textQuery = qs[0]
+		}
+	}
+	body := map[string]any{
+		"textQuery":      textQuery,
+		"maxResultCount": 20,
+		"rankPreference": "DISTANCE",
+		"locationBias": map[string]any{
+			"circle": map[string]any{
+				"center": map[string]float64{"latitude": cellLat, "longitude": cellLng},
+				"radius": float64(radiusBucket),
+			},
+		},
+	}
+	if lc := langCode(lang); lc != "" {
+		body["languageCode"] = lc
+	}
+
+	got, err := c.postSearchText(ctx, body)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	cards := make([]Card, 0, len(got))
+	for _, p := range got {
+		if p.ID == "" || seen[p.ID] {
+			continue
+		}
+		seen[p.ID] = true
+		// (0,0) origin -> DistanceM stays 0; Location is set for the client.
+		cards = append(cards, p.toCard(0, 0, photoBase, nearbyPhotos, langCode(lang)))
 	}
 	return cards, nil
 }
@@ -725,6 +794,7 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang
 		Rating:      p.Rating,
 		RatingCount: p.UserRatingCount,
 		Cuisines:    cuisines(p.Types, p.PrimaryTypeDisp.Text, lang),
+		Location:    LatLng{Lat: p.Location.Latitude, Lng: p.Location.Longitude},
 		DistanceM:   distanceM(lat, lng, p.Location.Latitude, p.Location.Longitude),
 		MapsURI:     p.GoogleMapsURI,
 	}

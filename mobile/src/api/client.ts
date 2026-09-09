@@ -1,3 +1,7 @@
+import { radiusBucket, snap } from "../lib/grid";
+import { haversineM } from "../lib/format";
+import { clientId } from "../lib/clientId";
+
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export type Lang = "en" | "th";
@@ -14,11 +18,14 @@ export type Card = {
   ratingCount: number;
   photoUrls: string[];
   cuisines: string[];
-  distanceM: number;
+  location?: { lat: number; lng: number }; // present from /nearby & /place; absent on older persisted cards
+  distanceM: number; // 0 from /nearby (client fills it from location + true position)
   openNow: boolean;
   openKnown: boolean;
   mapsUri: string;
 };
+
+const NEARBY_BUCKET_DEFAULT_M = 5000;
 
 // Place is the detail view — a superset of Card, from /place (Google Place Details).
 export type Place = Card & {
@@ -39,6 +46,9 @@ export type NearbyOpts = {
   sort?: SortMode;
   lang?: Lang;
   signal?: AbortSignal;
+  // Called once with response metadata — `degraded` is the X-EatRai-Degraded
+  // header ("stale" | "mock") when the server is serving cached/synthetic data.
+  onMeta?: (meta: { degraded: string | null }) => void;
 };
 
 async function readError(res: Response, fallback: string): Promise<Error> {
@@ -47,20 +57,88 @@ async function readError(res: Response, fallback: string): Promise<Error> {
   return new Error(body.error ?? `${fallback} (${res.status})`);
 }
 
-export async function getNearby(lat: number, lng: number, opts: NearbyOpts = {}): Promise<Card[]> {
-  const p = new URLSearchParams({ lat: String(lat), lng: String(lng) });
-  if (opts.radiusM) p.set("radius", String(opts.radiusM));
-  if (opts.categories && opts.categories.length) p.set("categories", opts.categories.join(","));
-  if (opts.openNow) p.set("openNow", "true");
-  if (opts.minRating) p.set("minRating", String(opts.minRating));
-  if (opts.priceLevels && opts.priceLevels.length) p.set("priceLevels", opts.priceLevels.join(","));
-  if (opts.sort === "match") p.set("sort", "match");
-  if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+const matchScore = (c: Card): number => c.rating * Math.log10(c.ratingCount + 10);
 
-  const res = await fetch(`${BASE}/nearby?${p.toString()}`, { signal: opts.signal });
+// getNearby: the server call is now keyed only on (grid cell, cuisine, radius
+// bucket, lang). Everything else — multi-cuisine merge, radius/rating/price/
+// open-now filtering, sort, and the exact distance — happens here on the client.
+// See docs/COST_AND_MONETIZATION_PLAN.md Part 3.
+export async function getNearby(lat: number, lng: number, opts: NearbyOpts = {}): Promise<Card[]> {
+  const cell = { lat: snap(lat), lng: snap(lng) };
+  const radiusM = opts.radiusM && opts.radiusM > 0 ? opts.radiusM : NEARBY_BUCKET_DEFAULT_M;
+  const bucket = radiusBucket(radiusM);
+  // One request per selected cuisine (each independently edge-cached); no
+  // cuisine selected → a single generic search.
+  const cuisines: (string | undefined)[] =
+    opts.categories && opts.categories.length ? opts.categories : [undefined];
+
+  const results = await Promise.all(
+    cuisines.map((cuisine) => {
+      const p = new URLSearchParams({ lat: String(cell.lat), lng: String(cell.lng) });
+      if (cuisine) p.set("cuisine", cuisine);
+      if (bucket !== NEARBY_BUCKET_DEFAULT_M) p.set("radius", String(bucket));
+      if (opts.lang && opts.lang !== "en") p.set("lang", opts.lang);
+      return fetchCards(`${BASE}/nearby?${p.toString()}`, opts.signal);
+    }),
+  );
+
+  if (opts.onMeta) {
+    const degraded = results.map((r) => r.degraded).find((d): d is string => !!d) ?? null;
+    opts.onMeta({ degraded });
+  }
+
+  // merge + de-dupe by id
+  const byId = new Map<string, Card>();
+  for (const r of results) {
+    for (const c of r.cards) if (!byId.has(c.id)) byId.set(c.id, c);
+  }
+
+  const cards: Card[] = [];
+  for (const c of byId.values()) {
+    // Server left distance for us (0) and gave us the place location →
+    // compute it from the user's *true* position, not the snapped cell.
+    const distanceM =
+      c.distanceM === 0 && c.location && (c.location.lat !== 0 || c.location.lng !== 0)
+        ? haversineM(lat, lng, c.location.lat, c.location.lng)
+        : c.distanceM;
+    const card = { ...c, distanceM };
+
+    if (distanceM > radiusM) continue; // 0 (unknown) always passes
+    if (opts.minRating && card.rating < opts.minRating) continue;
+    if (
+      opts.priceLevels &&
+      opts.priceLevels.length &&
+      card.priceLevel !== 0 && // unknown price passes, never excluded
+      !opts.priceLevels.includes(card.priceLevel)
+    ) {
+      continue;
+    }
+    if (opts.openNow && card.openKnown && !card.openNow) continue;
+    cards.push(card);
+  }
+
+  cards.sort(
+    opts.sort === "match"
+      ? (a, b) => matchScore(b) - matchScore(a)
+      : (a, b) => a.distanceM - b.distanceM,
+  );
+  return cards;
+}
+
+async function fetchCards(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ cards: Card[]; degraded: string | null }> {
+  const res = await fetch(url, { signal, headers: { "X-EatRai-Client": clientId() } });
   if (!res.ok) throw await readError(res, "Couldn't load restaurants");
   const data = (await res.json()) as { cards: Card[] };
-  return data.cards ?? [];
+  let degraded: string | null = null;
+  try {
+    degraded = (res.headers as { get?: (k: string) => string | null } | undefined)?.get?.("X-EatRai-Degraded") ?? null;
+  } catch {
+    // test doubles / odd runtimes may not expose headers
+  }
+  return { cards: data.cards ?? [], degraded };
 }
 
 export async function getPlace(

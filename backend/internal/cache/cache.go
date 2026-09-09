@@ -35,6 +35,28 @@ func (c *TTL) Get(key string) (any, bool) {
 	return e.val, true
 }
 
+// GetStale returns the stored value even when it has expired (fresh=false), and
+// never deletes on read. Used by the serve-stale path: when the Google quota is
+// spent, an expired cache entry is still better than nothing. A caller that
+// wants fresh-only should use Get.
+func (c *TTL) GetStale(key string) (val any, fresh, ok bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.m[key]
+	if !ok {
+		return nil, false, false
+	}
+	return e.val, time.Now().Before(e.expires), true
+}
+
+// Len reports the number of entries (including expired-but-not-yet-swept ones).
+// For /status.
+func (c *TTL) Len() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.m)
+}
+
 func (c *TTL) Set(key string, val any) {
 	c.SetTTL(key, val, c.ttl)
 }
@@ -49,7 +71,7 @@ func (c *TTL) SetTTL(key string, val any, ttl time.Duration) {
 	defer c.mu.Unlock()
 	c.m[key] = entry{val: val, expires: time.Now().Add(ttl)}
 	// opportunistic sweep so the map can't grow forever
-	if len(c.m) > 512 {
+	if len(c.m) > 4096 {
 		now := time.Now()
 		for k, e := range c.m {
 			if now.After(e.expires) {

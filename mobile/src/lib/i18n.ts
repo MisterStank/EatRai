@@ -152,6 +152,14 @@ const en = {
   a11yPhotoNext: "Next photo",
   a11yPhotoPrev: "Previous photo",
   a11yRestaurantCard: "{name}. Swipe right to save, left to pass.",
+
+  // coverage / degraded
+  coverageBannerOut: "EatRai covers {areas} + 7 more Thai cities. You're outside those, so results may be sparse.",
+  coverageEmptyHint: "You may be outside our coverage area — see where EatRai works.",
+  coverageHelpTitle: "Where EatRai works",
+  coverageHelpBody: "EatRai has real restaurant data in these areas only:",
+  degradedNote: "Showing recent results",
+  dismiss: "Dismiss",
 };
 
 type Key = keyof typeof en;
@@ -294,6 +302,13 @@ const th: Record<Key, string> = {
   a11yPhotoNext: "รูปถัดไป",
   a11yPhotoPrev: "รูปก่อนหน้า",
   a11yRestaurantCard: "{name} ปัดขวาเพื่อบันทึก ปัดซ้ายเพื่อผ่าน",
+
+  coverageBannerOut: "EatRai ให้บริการใน {areas} และอีก 7 เมืองในไทย คุณอยู่นอกพื้นที่ ผลลัพธ์อาจมีน้อย",
+  coverageEmptyHint: "คุณอาจอยู่นอกพื้นที่ให้บริการ — ดูพื้นที่ที่ EatRai รองรับ",
+  coverageHelpTitle: "พื้นที่ที่ EatRai รองรับ",
+  coverageHelpBody: "EatRai มีข้อมูลร้านอาหารจริงเฉพาะพื้นที่เหล่านี้:",
+  degradedNote: "กำลังแสดงผลลัพธ์ล่าสุด",
+  dismiss: "ปิด",
 };
 
 const dict: Record<Lang, Record<Key, string>> = { en, th };

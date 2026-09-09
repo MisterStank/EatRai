@@ -40,7 +40,31 @@ type Config struct {
 	// endpoints. 0 disables it.
 	RateLimitRPM int `envconfig:"RATE_LIMIT_RPM" default:"60"`
 
+	// FreeCap* are the per-month, per-SKU real-Google-call budgets the in-memory
+	// quota meter degrades at (at 90%). Set from Google's current per-SKU free
+	// tier — verify before shipping. 0 = no limit for that SKU.
+	FreeCapSearch  int `envconfig:"FREE_CAP_SEARCH" default:"5000"`
+	FreeCapDetails int `envconfig:"FREE_CAP_DETAILS" default:"5000"`
+	FreeCapPhoto   int `envconfig:"FREE_CAP_PHOTO" default:"10000"`
+
+	// IPLimit* budget cache-miss /nearby fetches per client. Inner limit is per
+	// (IP | X-EatRai-Client token); outer ceiling is per IP across all tokens.
+	// 0 = disabled. See docs/COST_AND_MONETIZATION_PLAN.md Part 12.
+	IPLimitHour   int `envconfig:"IPLIMIT_HOUR" default:"40"`
+	IPLimitDay    int `envconfig:"IPLIMIT_DAY" default:"150"`
+	IPLimitIPHour int `envconfig:"IPLIMIT_IP_HOUR" default:"200"`
+	IPLimitIPDay  int `envconfig:"IPLIMIT_IP_DAY" default:"750"`
+
 	AllowedOrigins []string `ignored:"true"`
+}
+
+// FreeCaps is the quota.Meter caps map built from the FREE_CAP_* settings.
+func (c Config) FreeCaps() map[string]int {
+	return map[string]int{
+		"search":  c.FreeCapSearch,
+		"details": c.FreeCapDetails,
+		"photo":   c.FreeCapPhoto,
+	}
 }
 
 func Load() (Config, error) {

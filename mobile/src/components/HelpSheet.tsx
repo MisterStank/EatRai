@@ -23,6 +23,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { color, font, radius, space } from "../theme/tokens";
 import { useT, type TKey } from "../lib/i18n";
+import { useSession } from "../store/session";
+import { AREAS, areaName } from "../lib/coverage";
 
 // A short guided walkthrough of the deck. Four pages: the first three animate a
 // schematic card to show a single gesture, the last is a plain reference list.
@@ -270,6 +272,7 @@ const REF: { icon: keyof typeof Feather.glyphMap; title: TKey; body: TKey }[] = 
 
 function GuideReference() {
   const t = useT();
+  const lang = useSession((s) => s.lang);
   return (
     <ScrollView
       style={styles.refList}
@@ -287,6 +290,18 @@ function GuideReference() {
           </View>
         </View>
       ))}
+
+      <View style={styles.coverageBlock}>
+        <Text style={styles.coverageTitle}>{t("coverageHelpTitle")}</Text>
+        <Text style={styles.coverageBody}>{t("coverageHelpBody")}</Text>
+        <View style={styles.coverageList}>
+          {AREAS.map((a) => (
+            <Text key={a.key} style={styles.coverageChip}>
+              {areaName(a, lang)}
+            </Text>
+          ))}
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -536,6 +551,29 @@ const styles = StyleSheet.create({
     color: color.inkSoft,
     marginTop: space(1),
     lineHeight: 18,
+  },
+
+  coverageBlock: { marginTop: space(1), marginBottom: space(2) },
+  coverageTitle: { fontFamily: font.displaySemi, fontSize: 15, color: color.ink },
+  coverageBody: {
+    fontFamily: font.body,
+    fontSize: 13,
+    color: color.inkSoft,
+    marginTop: space(1),
+    lineHeight: 18,
+  },
+  coverageList: { flexDirection: "row", flexWrap: "wrap", gap: space(1.5), marginTop: space(2.5) },
+  coverageChip: {
+    fontFamily: font.bodySemi,
+    fontSize: 12.5,
+    color: color.inkSoft,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.line,
+    borderRadius: radius.pill,
+    paddingHorizontal: space(3),
+    paddingVertical: space(1.5),
+    overflow: "hidden",
   },
 
   dots: {
