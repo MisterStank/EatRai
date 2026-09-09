@@ -2,6 +2,22 @@ import "react-native-gesture-handler/jestSetup";
 
 import { useSession } from "./src/store/session";
 
+// jsdom (used by the web-only AdCard test) has no matchMedia; the
+// react-native-reanimated mock touches it at load. Harmless in the default RN
+// test environment, where `window` is undefined.
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = () => ({
+    matches: false,
+    media: "",
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}
+
 // The app default language is Thai (see session store). Component tests assert
 // against the English UI strings, so pin the language to "en" for tests. This
 // file is a `setupFiles` entry (runs once per test file, before the test

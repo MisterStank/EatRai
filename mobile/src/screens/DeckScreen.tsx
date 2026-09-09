@@ -7,10 +7,13 @@ import { Feather } from "@expo/vector-icons";
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { getNearby, reverseGeocode, type Card } from "../api/client";
+import { getNearby, reverseGeocode, isAd, type Card, type DeckItem } from "../api/client";
 import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
 import { coverageHeadline, inCoverage } from "../lib/coverage";
+import { spliceAds } from "../lib/deckAds";
+import { deckAdsEnabled, TIPME_URL } from "../lib/adsConfig";
+import { AdCard } from "../components/AdCard";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
 import { ActionBar } from "../components/ActionBar";
 import { TopBar } from "../components/TopBar";
@@ -30,6 +33,10 @@ type Coords = { lat: number; lng: number };
 
 const MAX_RADIUS_M = 50000;
 const LOCATE_TIMEOUT_MS = 12000;
+
+// Part 11: one AdSense card after every N real cards, web-only, env-gated (see
+// adsConfig). Unconfigured (dev, tests, native) ⇒ `spliceAds` is a no-op.
+const adsEnabled = Platform.OS === "web" && deckAdsEnabled();
 
 export function DeckScreen() {
   const insets = useSafeAreaInsets();
@@ -64,7 +71,7 @@ export function DeckScreen() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [place, setPlace] = useState<string | null>(null);
   const [manualLocation, setManualLocation] = useState(false);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<DeckItem[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,8 +182,9 @@ export function DeckScreen() {
       const deck = next.filter(
         (c) => !excluded.current.has(c.id) && !likedIds.some((l) => l.id === c.id),
       );
-      const keepAt = keepId ? deck.findIndex((c) => c.id === keepId) : -1;
-      setCards(deck);
+      const withAds = spliceAds(deck, adsEnabled);
+      const keepAt = keepId ? withAds.findIndex((c) => c.id === keepId) : -1;
+      setCards(withAds);
       // Swipe history is positional (undo = "go back one index"), so it only
       // makes sense against the deck it was built from. Any reload — filter
       // change, new location — invalidates it, even when the current card
@@ -209,11 +217,17 @@ export function DeckScreen() {
 
   const resolve = useCallback(
     (dir: SwipeDir) => {
-      const card = cards[index];
-      if (!card) return;
-      history.current.push({ card, dir });
+      const item = cards[index];
+      if (!item) return;
+      if (isAd(item)) {
+        // swiping the ad card away — not liked, not in history
+        dragX.value = 0;
+        setIndex((n) => n + 1);
+        return;
+      }
+      history.current.push({ card: item, dir });
       if (dir === "like") {
-        addLiked(card);
+        addLiked(item);
         haptic("success");
       } else {
         haptic("light");
@@ -230,15 +244,21 @@ export function DeckScreen() {
     if (last.dir === "like") removeLiked(last.card.id);
     haptic("light");
     dragX.value = 0;
-    setIndex((n) => Math.max(0, n - 1));
-  }, [removeLiked, dragX]);
+    setIndex((n) => {
+      let i = n - 1;
+      while (i > 0 && isAd(cards[i])) i--; // step back over any ad card
+      return Math.max(0, i);
+    });
+  }, [removeLiked, dragX, cards]);
+
+  const activeCard = current && !isAd(current) ? current : null;
 
   const openDirections = () => {
-    if (current) openExternal(current.mapsUri);
+    if (activeCard) openExternal(activeCard.mapsUri);
   };
 
   const openDetail = () => {
-    if (current) setDetail(current);
+    if (activeCard) setDetail(activeCard);
   };
 
   const dismissHint = () => {
@@ -258,7 +278,7 @@ export function DeckScreen() {
   };
 
   const widenSearch = () => {
-    excluded.current = new Set(cards.map((c) => c.id));
+    excluded.current = new Set(cards.filter((c) => !isAd(c)).map((c) => c.id));
     setWidenM((prev) => {
       const from = prev ?? radiusM;
       return from >= MAX_RADIUS_M ? MAX_RADIUS_M : Math.min(MAX_RADIUS_M, from * 2);
@@ -273,8 +293,8 @@ export function DeckScreen() {
   };
 
   // --- keyboard shortcuts on web ---
-  const kbd = useRef({ resolve, undo, openDetail: () => current && setDetail(current) });
-  kbd.current = { resolve, undo, openDetail: () => current && setDetail(current) };
+  const kbd = useRef({ resolve, undo, openDetail });
+  kbd.current = { resolve, undo, openDetail };
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const anyModal =
@@ -325,7 +345,7 @@ export function DeckScreen() {
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
           onFeedback={() => setShowFeedback(true)}
-          onSupport={() => setInfoKey("support")}
+          onSupport={() => (TIPME_URL ? openExternal(TIPME_URL) : setInfoKey("support"))}
         />
 
         {outOfCoverage && !coverageDismissed ? (
@@ -394,6 +414,9 @@ export function DeckScreen() {
                   <Text style={styles.linkText}>{t("changeLocation")}</Text>
                 </Pressable>
               </View>
+              <View style={styles.doneAd}>
+                <AdCard slot="done" />
+              </View>
             </View>
           ) : (
             stack.map((card, i) => (
@@ -419,16 +442,18 @@ export function DeckScreen() {
           </Pressable>
         ) : null}
 
-        <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
-          <ActionBar
-            onUndo={undo}
-            onNope={() => resolve("nope")}
-            onLike={() => resolve("like")}
-            onDirections={openDirections}
-            canUndo={history.current.length > 0}
-            disabled={!current}
-          />
-        </View>
+        {current && isAd(current) ? null : (
+          <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
+            <ActionBar
+              onUndo={undo}
+              onNope={() => resolve("nope")}
+              onLike={() => resolve("like")}
+              onDirections={openDirections}
+              canUndo={history.current.length > 0}
+              disabled={!current}
+            />
+          </View>
+        )}
       </View>
 
       <FilterSheet
@@ -523,6 +548,7 @@ const styles = StyleSheet.create({
   message: { paddingHorizontal: space(6), alignItems: "center" },
   messageText: { fontFamily: font.body, fontSize: 15, color: color.inkSoft, textAlign: "center", lineHeight: 22 },
   messageHint: { fontSize: 13.5, color: color.inkFaint, marginTop: space(2) },
+  doneAd: { alignSelf: "stretch", height: 260, marginTop: space(5) },
   notice: {
     flexDirection: "row",
     alignItems: "center",
