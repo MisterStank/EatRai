@@ -11,6 +11,11 @@ mobile/dist/
 mobile/*.log
 mobile/coverage/
 
+# generated SEO pages + sitemap (scripts/build-seo.js — runs in the Vercel build)
+mobile/public/near/
+mobile/public/th/
+mobile/public/sitemap.xml
+
 # go coverage output
 *.out
 

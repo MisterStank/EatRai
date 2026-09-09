@@ -8,6 +8,7 @@
     "ios": "expo run:ios",
     "android": "expo run:android",
     "test": "jest --maxWorkers=2",
+    "build:seo": "node scripts/build-seo.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

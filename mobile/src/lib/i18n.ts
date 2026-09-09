@@ -46,6 +46,7 @@ const en = {
   feedbackBlurb: "Your feedback opens in a browser. It's anonymous unless you leave your email.",
   openFeedbackForm: "Open feedback form",
   supportDev: "Support the developer",
+  privacyTerms: "Privacy & Terms",
   comingSoon: "Coming soon",
 
   // decide
@@ -205,6 +206,7 @@ const th: Record<Key, string> = {
   feedbackBlurb: "แบบฟอร์มจะเปิดในเบราว์เซอร์ ไม่ระบุตัวตนเว้นแต่คุณจะกรอกอีเมล",
   openFeedbackForm: "เปิดแบบฟอร์ม",
   supportDev: "สนับสนุนผู้พัฒนา",
+  privacyTerms: "ความเป็นส่วนตัว & เงื่อนไข",
   comingSoon: "เร็ว ๆ นี้",
 
   decideForMe: "เลือกให้เลย",
