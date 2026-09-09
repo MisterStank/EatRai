@@ -24,7 +24,10 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/chakkrit/eatrai/internal/cache"
+	"github.com/chakkrit/eatrai/internal/grid"
+	"github.com/chakkrit/eatrai/internal/iplimit"
 	"github.com/chakkrit/eatrai/internal/places"
+	"github.com/chakkrit/eatrai/internal/quota"
 	"github.com/chakkrit/eatrai/internal/ratelimit"
 )
 
@@ -32,6 +35,8 @@ type Server struct {
 	Places         *places.Client
 	Cache          *cache.TTL
 	Limiter        *ratelimit.Limiter
+	Quota          *quota.Meter     // nil = unlimited (tests, or FREE_CAP_*=0)
+	IPLimit        *iplimit.Limiter // nil = unlimited (tests)
 	Mock           bool
 	AllowedOrigins []string // CORS + origin gate; ["*"] disables the gate
 	RequireOrigin  bool
@@ -39,8 +44,14 @@ type Server struct {
 }
 
 // openNowTTL keeps "open now" results fresh — a place that just closed shouldn't
-// linger in the cache for the full default TTL.
+// linger in the cache for the full default TTL. (Legacy Search path only.)
 const openNowTTL = 3 * time.Minute
+
+// nearbyTTL is the long in-memory lifetime for a /nearby cell result — the
+// filtering that used to make results go stale now happens client-side, so the
+// raw cell list is good for a long time. Cloudflare's edge caches it for the
+// same window. See docs/COST_AND_MONETIZATION_PLAN.md Part 6.
+const nearbyTTL = 14 * 24 * time.Hour
 
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
@@ -48,7 +59,7 @@ func (s *Server) Router() http.Handler {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   s.AllowedOrigins,
 		AllowedMethods:   []string{http.MethodGet, http.MethodOptions},
-		AllowedHeaders:   []string{"*"},
+		AllowedHeaders:   []string{"*", "X-EatRai-Client"},
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
@@ -56,7 +67,16 @@ func (s *Server) Router() http.Handler {
 	// NB: not /healthz or /statusz — Google Cloud Run's frontend reserves the
 	// "*z" health/status paths and never routes them to the container.
 	health := func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "mock": s.Mock})
+		counts, month := s.Quota.Snapshot()
+		ipKeys, ipDegrades := s.IPLimit.Stats()
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":       true,
+			"mock":     s.Mock,
+			"cache":    map[string]any{"entries": s.Cache.Len()},
+			"quota":    map[string]any{"counts": counts, "month": month},
+			"iplimit":  map[string]any{"trackedKeys": ipKeys, "degradeHits": ipDegrades},
+			"degraded": s.Quota.Exceeded("search") || s.Quota.Exceeded("details") || s.Quota.Exceeded("photo"),
+		})
 	}
 	r.Get("/status", health)
 	r.Get("/healthcheck", health)
@@ -160,6 +180,9 @@ func clientIP(r *http.Request) string {
 
 // --- handlers ----------------------------------------------------------
 
+// handleNearby is the cost-collapsed contract (Part 1): the Google call is a
+// function of (grid cell, cuisine, radius bucket, lang) ONLY. Radius / price /
+// rating / open-now / sort / multi-cuisine merge are all client-side now.
 func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -169,68 +192,112 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lat and lng are required"})
 		return
 	}
+	cellLat, cellLng := grid.Snap(lat), grid.Snap(lng)
 
-	radius := 1500.0
+	// Prefer the new single `cuisine`; fall back to the first key of a legacy
+	// `categories` CSV — a 1-release compat shim for apps that haven't updated.
+	cuisine := strings.ToLower(strings.TrimSpace(q.Get("cuisine")))
+	if cuisine == "" {
+		if raw := strings.TrimSpace(q.Get("categories")); raw != "" {
+			cuisine = strings.ToLower(strings.TrimSpace(strings.SplitN(raw, ",", 2)[0]))
+		}
+	}
+
+	radius := 5000.0
 	if v, err := strconv.ParseFloat(q.Get("radius"), 64); err == nil && v > 0 {
 		radius = v
 	}
-
-	var categories []string
-	if raw := strings.TrimSpace(q.Get("categories")); raw != "" {
-		for _, c := range strings.Split(raw, ",") {
-			if c = strings.ToLower(strings.TrimSpace(c)); c != "" {
-				categories = append(categories, c)
-			}
-		}
-		sort.Strings(categories)
-	}
-	openNow := q.Get("openNow") == "true" || q.Get("openNow") == "1"
+	bucket := grid.RadiusBucket(radius)
 	lang := normLang(q.Get("lang"))
-	minRating := parseRating(q.Get("minRating"))
-	priceLevels := parsePriceLevels(q.Get("priceLevels"))
-	sortMode := "near"
-	if q.Get("sort") == "match" {
-		sortMode = "match"
+
+	key := fmt.Sprintf("n|%.3f,%.3f|%s|r%d|%s", cellLat, cellLng, cuisine, bucket, lang)
+	base := publicBase(r)
+
+	val, fresh, ok := s.Cache.GetStale(key)
+	quotaOK := !s.Quota.Exceeded("search")
+	// clientMayFetch also *records* the fetch against the per-client budget, so
+	// only call it when we're actually about to (or would like to) hit Google.
+	// A nil IPLimit (tests) always allows.
+	clientMayFetch := func() bool {
+		return s.IPLimit.Allow(clientIP(r), strings.TrimSpace(r.Header.Get("X-EatRai-Client")))
 	}
 
-	query := places.Query{
-		Lat: lat, Lng: lng, RadiusM: radius,
-		Categories: categories, OpenNow: openNow,
-		MinRating: minRating, PriceLevels: priceLevels, Sort: sortMode,
-		Lang: lang, PhotoBase: publicBase(r),
-	}
+	switch {
+	case ok && fresh:
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		writeJSON(w, http.StatusOK, map[string]any{"cards": val, "cached": true})
+		return
 
-	key := cacheKey(lat, lng, radius, categories, openNow) +
-		fmt.Sprintf("|r%.1f|p%v|s%s|%s", minRating, priceLevels, sortMode, lang)
-	if cached, ok := s.Cache.Get(key); ok {
-		w.Header().Set("Cache-Control", "public, max-age=120")
-		writeJSON(w, http.StatusOK, map[string]any{"cards": cached, "cached": true})
+	case ok && !fresh && (!quotaOK || !clientMayFetch()):
+		// stale, but we can't/shouldn't refresh (global quota spent, or this
+		// client is over its budget): serve stale as-is.
+		w.Header().Set("X-EatRai-Degraded", "stale")
+		writeJSON(w, http.StatusOK, map[string]any{"cards": val, "cached": true, "stale": true})
+		return
+
+	case ok && !fresh:
+		// stale + allowed: serve stale now, refresh in the background (live only).
+		if !s.Mock {
+			go s.refreshNearby(context.Background(), key, cellLat, cellLng, cuisine, bucket, lang, base)
+		}
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		writeJSON(w, http.StatusOK, map[string]any{"cards": val, "cached": true, "stale": true})
+		return
+
+	case !ok && (!quotaOK || !clientMayFetch()) && !s.Mock:
+		// miss + can't fetch (global quota spent, or client over budget):
+		// degrade to mock rather than call Google.
+		cards := places.MockNearby(nearbyQuery(cellLat, cellLng, cuisine, bucket, lang))
+		w.Header().Set("X-EatRai-Degraded", "mock")
+		writeJSON(w, http.StatusOK, map[string]any{"cards": cards})
 		return
 	}
 
-	var cards []places.Card
-	if s.Mock {
-		cards = places.MockNearby(query)
-	} else {
-		var err error
-		cards, err = s.Places.Search(r.Context(), query)
-		if err != nil {
-			s.Log.Error("places search", "err", err)
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
-			return
-		}
+	// miss + allowed: fetch.
+	cards, err := s.fetchNearby(r.Context(), cellLat, cellLng, cuisine, bucket, lang, base)
+	if err != nil {
+		s.Log.Error("places search", "err", err)
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not reach the restaurant service"})
+		return
 	}
-
 	if cards == nil {
 		cards = []places.Card{}
 	}
-	ttl := time.Duration(0)
-	if openNow {
-		ttl = openNowTTL
-	}
-	s.Cache.SetTTL(key, cards, ttl)
-	w.Header().Set("Cache-Control", "public, max-age=120")
+	s.Cache.SetTTL(key, cards, nearbyTTL)
+	w.Header().Set("Cache-Control", "public, max-age=300")
 	writeJSON(w, http.StatusOK, map[string]any{"cards": cards})
+}
+
+func nearbyQuery(cellLat, cellLng float64, cuisine string, bucket int, lang string) places.Query {
+	var cats []string
+	if cuisine != "" {
+		cats = []string{cuisine}
+	}
+	return places.Query{Lat: cellLat, Lng: cellLng, RadiusM: float64(bucket), Categories: cats, Lang: lang}
+}
+
+func (s *Server) fetchNearby(ctx context.Context, cellLat, cellLng float64, cuisine string, bucket int, lang, base string) ([]places.Card, error) {
+	if s.Mock {
+		return places.MockNearby(nearbyQuery(cellLat, cellLng, cuisine, bucket, lang)), nil
+	}
+	s.Quota.Count("search")
+	return s.Places.SearchCuisine(ctx, cellLat, cellLng, cuisine, bucket, lang, base)
+}
+
+// refreshNearby re-fetches a cell in the background after a stale hit. Best
+// effort — a failure just leaves the stale entry in place for the next request.
+func (s *Server) refreshNearby(ctx context.Context, key string, cellLat, cellLng float64, cuisine string, bucket int, lang, base string) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	cards, err := s.fetchNearby(ctx, cellLat, cellLng, cuisine, bucket, lang, base)
+	if err != nil {
+		s.Log.Warn("nearby background refresh", "err", err)
+		return
+	}
+	if cards == nil {
+		cards = []places.Card{}
+	}
+	s.Cache.SetTTL(key, cards, nearbyTTL)
 }
 
 func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
@@ -245,8 +312,21 @@ func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
 	lng, _ := strconv.ParseFloat(q.Get("lng"), 64)
 
 	key := "place|" + id + "|" + lang
-	if cached, ok := s.Cache.Get(key); ok {
-		writeJSON(w, http.StatusOK, cached)
+	val, fresh, ok := s.Cache.GetStale(key)
+	if ok && fresh {
+		writeJSON(w, http.StatusOK, val)
+		return
+	}
+
+	// Out of Place Details quota: serve a stale copy if we have one rather than
+	// spend a call. (Details barely change, so stale is fine.)
+	if !s.Mock && s.Quota.Exceeded("details") {
+		if ok {
+			w.Header().Set("X-EatRai-Degraded", "stale")
+			writeJSON(w, http.StatusOK, val)
+			return
+		}
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "place details are temporarily unavailable"})
 		return
 	}
 
@@ -257,15 +337,21 @@ func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
 	if s.Mock {
 		place = places.MockPlace(id, lang, lat, lng)
 	} else {
+		s.Quota.Count("details")
 		place, err = s.Places.GetPlace(r.Context(), id, lang, publicBase(r), lat, lng)
 		if err != nil {
 			s.Log.Error("places detail", "err", err)
+			if ok {
+				w.Header().Set("X-EatRai-Degraded", "stale")
+				writeJSON(w, http.StatusOK, val)
+				return
+			}
 			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not load that place"})
 			return
 		}
 	}
 
-	s.Cache.Set(key, place)
+	s.Cache.SetTTL(key, place, 24*time.Hour)
 	writeJSON(w, http.StatusOK, place)
 }
 
@@ -477,8 +563,14 @@ func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no photos in mock mode", http.StatusNotFound)
 		return
 	}
+	if s.Quota.Exceeded("photo") {
+		// Out of Photo quota — let the client fall back to its placeholder.
+		http.Error(w, "photo temporarily unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	width, _ := strconv.Atoi(r.URL.Query().Get("w"))
 
+	s.Quota.Count("photo")
 	body, ct, err := s.Places.FetchPhoto(r.Context(), name, width)
 	if err != nil {
 		s.Log.Error("places photo", "err", err)
@@ -488,7 +580,9 @@ func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {
 	defer body.Close()
 
 	w.Header().Set("Content-Type", ct)
-	w.Header().Set("Cache-Control", "public, max-age=86400")
+	// Immutable: a Places photo resource name never changes its bytes, so the
+	// edge / browser can keep it for a year. See Part 5 / Part 9.
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	io.Copy(w, body)
 }
 
@@ -509,22 +603,6 @@ func publicBase(r *http.Request) string {
 		scheme = p
 	}
 	return scheme + "://" + r.Host
-}
-
-func cacheKey(lat, lng, radius float64, categories []string, openNow bool) string {
-	var b strings.Builder
-	b.WriteString(strconv.FormatFloat(round3(lat), 'f', 3, 64))
-	b.WriteByte(',')
-	b.WriteString(strconv.FormatFloat(round3(lng), 'f', 3, 64))
-	b.WriteByte('|')
-	b.WriteString(strconv.Itoa(int(radius)))
-	b.WriteByte('|')
-	b.WriteString(strings.Join(categories, ","))
-	b.WriteByte('|')
-	if openNow {
-		b.WriteByte('o')
-	}
-	return b.String()
 }
 
 func round3(f float64) float64 {

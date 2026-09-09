@@ -12,7 +12,9 @@ import (
 	"github.com/chakkrit/eatrai/internal/cache"
 	"github.com/chakkrit/eatrai/internal/config"
 	"github.com/chakkrit/eatrai/internal/httpapi"
+	"github.com/chakkrit/eatrai/internal/iplimit"
 	"github.com/chakkrit/eatrai/internal/places"
+	"github.com/chakkrit/eatrai/internal/quota"
 	"github.com/chakkrit/eatrai/internal/ratelimit"
 )
 
@@ -32,6 +34,8 @@ func main() {
 		Places:         places.NewClient(cfg.GooglePlacesAPIKey),
 		Cache:          cache.New(cfg.CacheTTL),
 		Limiter:        ratelimit.New(cfg.RateLimitRPM, time.Minute),
+		Quota:          quota.New(cfg.FreeCaps()),
+		IPLimit:        iplimit.New(cfg.IPLimitHour, cfg.IPLimitDay, cfg.IPLimitIPHour, cfg.IPLimitIPDay),
 		Mock:           cfg.Mock,
 		AllowedOrigins: cfg.AllowedOrigins,
 		RequireOrigin:  cfg.RequireOrigin,

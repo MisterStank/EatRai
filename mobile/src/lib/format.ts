@@ -45,6 +45,20 @@ export const fmtPriceBand = (level: number): string => {
   }
 };
 
+// haversineM is the great-circle distance in metres between two coordinates.
+// Returns 0 when the origin is the null-island default so a missing user
+// location never renders an 11,000 km distance.
+export const haversineM = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  if (lat1 === 0 && lng1 === 0) return 0;
+  const R = 6371000;
+  const p = Math.PI / 180;
+  const a =
+    0.5 -
+    Math.cos((lat2 - lat1) * p) / 2 +
+    (Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lng2 - lng1) * p))) / 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(a)));
+};
+
 export const fmtCuisines = (c: string[]): string => c.slice(0, 3).join(" · ");
 
 export const fmtRating = (r: number): string => (r > 0 ? r.toFixed(1) : "");

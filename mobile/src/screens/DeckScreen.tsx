@@ -10,6 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getNearby, reverseGeocode, type Card } from "../api/client";
 import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
+import { coverageHeadline, inCoverage } from "../lib/coverage";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
 import { ActionBar } from "../components/ActionBar";
 import { TopBar } from "../components/TopBar";
@@ -68,6 +69,8 @@ export function DeckScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [widenM, setWidenM] = useState<number | null>(null);
+  const [degraded, setDegraded] = useState<string | null>(null);
+  const [coverageDismissed, setCoverageDismissed] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLiked, setShowLiked] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
@@ -159,6 +162,9 @@ export function DeckScreen() {
         sort,
         lang,
         signal: ctrl.signal,
+        onMeta: (m) => {
+          if (!ctrl.signal.aborted) setDegraded(m.degraded);
+        },
       });
       if (ctrl.signal.aborted) return;
       // Read the current liked ids live (not via a subscribed selector) so a
@@ -306,6 +312,7 @@ export function DeckScreen() {
   const stack = cards.slice(index, index + 3);
   const deckDone = !loading && !error && cards.length > 0 && index >= cards.length;
   const canWiden = effectiveRadius < MAX_RADIUS_M;
+  const outOfCoverage = !!coords && !inCoverage(coords.lat, coords.lng);
 
   return (
     <View style={styles.root}>
@@ -321,6 +328,24 @@ export function DeckScreen() {
           onSupport={() => setInfoKey("support")}
         />
 
+        {outOfCoverage && !coverageDismissed ? (
+          <Pressable
+            style={styles.notice}
+            onPress={() => setCoverageDismissed(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("dismiss")}
+          >
+            <Text style={styles.noticeText} numberOfLines={2}>
+              {t("coverageBannerOut", { areas: coverageHeadline(lang) })}
+            </Text>
+            <Feather name="x" size={14} color={color.inkFaint} />
+          </Pressable>
+        ) : degraded ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{t("degradedNote")}</Text>
+          </View>
+        ) : null}
+
         <View style={[styles.deck, { marginBottom: insets.bottom + deckReserve }]}>
           <Animated.View pointerEvents="none" style={[styles.glow, styles.glowLike, glowStyle]}>
             <LinearGradient colors={["transparent", "rgba(18,183,106,0.4)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
@@ -334,6 +359,9 @@ export function DeckScreen() {
           ) : error ? (
             <View style={styles.message}>
               <Text style={styles.messageText}>{error}</Text>
+              {outOfCoverage ? (
+                <Text style={[styles.messageText, styles.messageHint]}>{t("coverageEmptyHint")}</Text>
+              ) : null}
               <View style={styles.messageActions}>
                 <Pressable style={styles.retry} onPress={load}>
                   <Text style={styles.retryText}>{t("tryAgain")}</Text>
@@ -494,6 +522,21 @@ const styles = StyleSheet.create({
   glowNope: { left: -space(4.5) },
   message: { paddingHorizontal: space(6), alignItems: "center" },
   messageText: { fontFamily: font.body, fontSize: 15, color: color.inkSoft, textAlign: "center", lineHeight: 22 },
+  messageHint: { fontSize: 13.5, color: color.inkFaint, marginTop: space(2) },
+  notice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(2),
+    marginHorizontal: space(4.5),
+    marginTop: space(2),
+    paddingHorizontal: space(3.5),
+    paddingVertical: space(2),
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceAlt,
+    borderWidth: 1,
+    borderColor: color.line,
+  },
+  noticeText: { flex: 1, fontFamily: font.body, fontSize: 12.5, color: color.inkSoft, lineHeight: 17 },
   messageActions: { alignItems: "center", marginTop: space(4), gap: space(2.5) },
   retry: {
     borderRadius: radius.pill,

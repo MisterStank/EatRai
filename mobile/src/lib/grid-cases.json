@@ -1,0 +1,24 @@
+{
+  "_note": "Canonical parity table for the coordinate grid. Read by BOTH mobile/src/lib/grid.test.ts and backend/internal/grid/grid_test.go so the two implementations cannot drift. See docs/COST_AND_MONETIZATION_PLAN.md Part 2.",
+  "deg": 0.003,
+  "snap": [
+    { "in": 13.746, "out": 13.746 },
+    { "in": 13.7448, "out": 13.746 },
+    { "in": 13.75, "out": 13.749 },
+    { "in": 0, "out": 0 },
+    { "in": -13.746, "out": -13.746 },
+    { "in": 100.534, "out": 100.533 },
+    { "in": 100.5352, "out": 100.536 },
+    { "in": 100.5, "out": 100.5 },
+    { "in": -100.534, "out": -100.533 }
+  ],
+  "radiusBucket": [
+    { "in": 1500, "out": 5000 },
+    { "in": 5000, "out": 5000 },
+    { "in": 5001, "out": 10000 },
+    { "in": 10000, "out": 10000 },
+    { "in": 20000, "out": 20000 },
+    { "in": 20001, "out": 50000 },
+    { "in": 45000, "out": 50000 }
+  ]
+}
