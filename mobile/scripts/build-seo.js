@@ -160,16 +160,20 @@ function pageHtml({ area, lang, cards, siblings }) {
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${canonical}">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
 <script type="application/ld+json">${jsonLd(area, lang, cards)}</script>
 ${adScript}
 <style>
 :root{color-scheme:light}
 *{box-sizing:border-box}
-body{margin:0;font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;background:#FBF7F0;color:#17140F}
+body{margin:0;font:16px/1.55 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+h1,h2,.cta{font-family:"Kanit",sans-serif}
 a{color:#BE4127}
 header,main,footer{max-width:720px;margin:0 auto;padding:0 20px}
 header{padding-top:32px}
-h1{font-size:26px;line-height:1.25;margin:0 0 8px}
+h1{font-size:26px;line-height:1.25;margin:0 0 8px;font-weight:700}
 .lede{color:#5b5346;margin:0 0 20px}
 .cta{display:inline-block;background:#FF5A1F;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;margin:4px 0 24px}
 .ad{margin:24px 0;min-height:100px}
