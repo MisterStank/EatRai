@@ -27,6 +27,12 @@ export type Card = {
 
 const NEARBY_BUCKET_DEFAULT_M = 5000;
 
+// A synthetic, non-restaurant item spliced into the deck for an ad (Part 11).
+// Never persisted, never in liked/excluded/history.
+export type AdSentinel = { id: string; isAd: true };
+export type DeckItem = Card | AdSentinel;
+export const isAd = (item: DeckItem): item is AdSentinel => "isAd" in item && item.isAd === true;
+
 // Place is the detail view — a superset of Card, from /place (Google Place Details).
 export type Place = Card & {
   phone: string;

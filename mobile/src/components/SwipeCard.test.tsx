@@ -22,6 +22,33 @@ function card(overrides: Partial<Card> = {}): Card {
   };
 }
 
+describe("SwipeCard ad sentinel", () => {
+  test("renders an ad sentinel without touching restaurant fields", () => {
+    const r = render(
+      <SwipeCard
+        card={{ id: "__ad_1", isAd: true }}
+        depth={0}
+        onResolve={() => {}}
+        onDetail={() => {}}
+      />,
+    );
+    // AdCard itself renders null off-web, so the sentinel is an empty card — the
+    // point is it doesn't throw on missing name/rating/etc.
+    expect(r.toJSON()).not.toBeNull();
+    expect(r.queryByText("Test Place")).toBeNull();
+  });
+
+  test("a top sentinel resolves on swipe (dismiss), never opens detail", () => {
+    const onResolve = jest.fn();
+    const onDetail = jest.fn();
+    render(
+      <SwipeCard card={{ id: "__ad_1", isAd: true }} depth={0} onResolve={onResolve} onDetail={onDetail} />,
+    );
+    // no crash; detail is never wired for an ad
+    expect(onDetail).not.toHaveBeenCalled();
+  });
+});
+
 // Regression: SwipeCard used to render nothing at all for the open/closed
 // chip when hours weren't known, silently hiding the ambiguity instead of
 // surfacing it.

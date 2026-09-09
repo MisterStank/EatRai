@@ -17,7 +17,8 @@ import { color, font, radius, space } from "../theme/tokens";
 import { fmtCuisines, fmtDistance, fmtPriceRange, fmtRating } from "../lib/format";
 import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
-import type { Card } from "../api/client";
+import { isAd, type Card, type DeckItem } from "../api/client";
+import { AdCard } from "./AdCard";
 
 export type SwipeDir = "like" | "nope";
 
@@ -28,7 +29,7 @@ export function SwipeCard({
   onResolve,
   onDetail,
 }: {
-  card: Card;
+  card: DeckItem;
   depth: number; // 0 = top / interactive
   dragX?: SharedValue<number>;
   onResolve: (dir: SwipeDir) => void;
@@ -43,7 +44,9 @@ export function SwipeCard({
   const x = useSharedValue(0);
   const y = useSharedValue(0);
 
-  const photos = card.photoUrls?.length ? card.photoUrls : [""];
+  const ad = isAd(card);
+  const rc = card as Card; // safe: every `rc` read below is gated on `!ad`
+  const photos = !ad && rc.photoUrls?.length ? rc.photoUrls : [""];
   const [pi, setPi] = useState(0);
   const [cardH, setCardH] = useState(0);
   const idx = Math.min(pi, photos.length - 1);
@@ -107,12 +110,24 @@ export function SwipeCard({
     opacity: interpolate(x.value, [-threshold, -40], [1, 0], Extrapolation.CLAMP),
   }));
 
+  // An ad sentinel: a swipeable card whose body is an <AdCard>, no tap-to-detail.
+  // Returns before `body` is built — `body` reads restaurant fields eagerly.
+  if (ad) {
+    const adBody = (
+      <Animated.View style={[styles.card, styles.adCard, animStyle]}>
+        <AdCard slot="deck" />
+      </Animated.View>
+    );
+    if (!isTop) return adBody;
+    return <GestureDetector gesture={pan}>{adBody}</GestureDetector>;
+  }
+
   const body = (
     <Animated.View
       style={[styles.card, animStyle]}
       onLayout={(e) => setCardH(e.nativeEvent.layout.height)}
       accessible={isTop}
-      accessibilityLabel={isTop ? t("a11yRestaurantCard", { name: card.name }) : undefined}
+      accessibilityLabel={isTop ? t("a11yRestaurantCard", { name: rc.name }) : undefined}
     >
       <LinearGradient
         colors={["#F4AE63", "#E7743A", "#BE4127"]}
@@ -167,27 +182,27 @@ export function SwipeCard({
       <View style={styles.info}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>
-            {card.name}
+            {rc.name}
           </Text>
           {isTop ? <Feather name="chevron-up" size={18} color="rgba(255,255,255,0.7)" /> : null}
         </View>
         <Text style={styles.meta} numberOfLines={1}>
-          {[fmtPriceRange(card.priceRange), fmtCuisines(card.cuisines)].filter(Boolean).join("  ·  ")}
+          {[fmtPriceRange(rc.priceRange), fmtCuisines(rc.cuisines)].filter(Boolean).join("  ·  ")}
         </Text>
         <View style={styles.chips}>
           <View style={styles.chip}>
-            <Text style={styles.chipText}>{fmtDistance(card.distanceM, lang)}</Text>
+            <Text style={styles.chipText}>{fmtDistance(rc.distanceM, lang)}</Text>
           </View>
-          {card.rating > 0 ? (
+          {rc.rating > 0 ? (
             <View style={styles.chip}>
               <Feather name="star" size={11} color={color.gold} />
-              <Text style={styles.chipText}>{fmtRating(card.rating)}</Text>
+              <Text style={styles.chipText}>{fmtRating(rc.rating)}</Text>
             </View>
           ) : null}
-          {card.openKnown ? (
+          {rc.openKnown ? (
             <View style={styles.chip}>
-              <View style={[styles.dot, { backgroundColor: card.openNow ? color.likeBright : color.gold }]} />
-              <Text style={styles.chipText}>{card.openNow ? t("open") : t("closed")}</Text>
+              <View style={[styles.dot, { backgroundColor: rc.openNow ? color.likeBright : color.gold }]} />
+              <Text style={styles.chipText}>{rc.openNow ? t("open") : t("closed")}</Text>
             </View>
           ) : (
             <View style={styles.chip}>
@@ -211,6 +226,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surfaceAlt,
     overflow: "hidden",
   },
+  adCard: { alignItems: "stretch", justifyContent: "center", padding: space(3) },
   segments: {
     position: "absolute",
     top: space(2.5),

@@ -18,6 +18,7 @@ import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { isTodayLine, todayHours } from "../lib/hours";
 import { openExternal } from "../lib/linking";
+import { AdCard } from "./AdCard";
 
 export function RestaurantSheet({
   visible,
@@ -159,6 +160,10 @@ export function RestaurantSheet({
               <Pressable style={styles.mapsBtn} onPress={() => open(view.mapsUri)}>
                 <Text style={styles.mapsBtnText}>{t("openInMaps")}</Text>
               </Pressable>
+
+              <View style={styles.detailAd}>
+                <AdCard slot="detail" />
+              </View>
             </View>
           </ScrollView>
         )}
@@ -237,6 +242,7 @@ const styles = StyleSheet.create({
   rowValue: { fontFamily: font.body, fontSize: 14, color: color.ink, marginTop: space(1), lineHeight: 21 },
   hoursToday: { fontFamily: font.bodyBold, color: color.ink },
   summary: { fontFamily: font.body, fontSize: 14, color: color.inkSoft, marginTop: space(4), lineHeight: 22 },
+  detailAd: { height: 250, marginTop: space(6) },
   mapsBtn: {
     height: 52,
     borderRadius: radius.lg,
