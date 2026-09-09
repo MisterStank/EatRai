@@ -1,0 +1,5 @@
+# EatRai — AdSense authorized sellers.
+# Replace pub-0000000000000000 with your real AdSense publisher ID
+# (AdSense → Account → Settings, or the ca-pub-XXXX in your ad code),
+# then redeploy. Until then AdSense treats inventory as unauthorized.
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

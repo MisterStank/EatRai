@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx expo export --platform web --clear",
+  "buildCommand": "node scripts/build-seo.js ; npx expo export --platform web --clear",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [

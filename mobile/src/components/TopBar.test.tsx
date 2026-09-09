@@ -10,6 +10,7 @@ function renderBar(props: Partial<React.ComponentProps<typeof TopBar>> = {}) {
     onHelp: jest.fn(),
     onFeedback: jest.fn(),
     onSupport: jest.fn(),
+    onLegal: jest.fn(),
   };
   const utils = render(
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>

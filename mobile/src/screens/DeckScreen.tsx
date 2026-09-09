@@ -11,6 +11,7 @@ import { getNearby, reverseGeocode, isAd, type Card, type DeckItem } from "../ap
 import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
 import { coverageHeadline, inCoverage } from "../lib/coverage";
+import { readStartLocation } from "../lib/startLocation";
 import { spliceAds } from "../lib/deckAds";
 import { deckAdsEnabled, TIPME_URL } from "../lib/adsConfig";
 import { AdCard } from "../components/AdCard";
@@ -135,6 +136,15 @@ export function DeckScreen() {
   }, []);
 
   useEffect(() => {
+    // Deep-linked from a Part 15 SEO page (?lat&lng&area) → open there, skip GPS.
+    const start = readStartLocation();
+    if (start) {
+      setManualLocation(true);
+      setError(null);
+      if (start.label) setPlace(start.label);
+      setCoords({ lat: start.lat, lng: start.lng });
+      return;
+    }
     locate();
   }, [locate]);
 
@@ -346,6 +356,7 @@ export function DeckScreen() {
           onHelp={() => setShowHelp(true)}
           onFeedback={() => setShowFeedback(true)}
           onSupport={() => (TIPME_URL ? openExternal(TIPME_URL) : setInfoKey("support"))}
+          onLegal={() => openExternal("https://eatrai.help/privacy")}
         />
 
         {outOfCoverage && !coverageDismissed ? (
