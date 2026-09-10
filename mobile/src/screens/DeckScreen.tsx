@@ -13,7 +13,7 @@ import { useT } from "../lib/i18n";
 import { coverageHeadline, inCoverage } from "../lib/coverage";
 import { readStartLocation } from "../lib/startLocation";
 import { spliceAds } from "../lib/deckAds";
-import { deckAdsEnabled, TIPME_URL } from "../lib/adsConfig";
+import { deckAdsEnabled } from "../lib/adsConfig";
 import { AdCard } from "../components/AdCard";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
 import { ActionBar } from "../components/ActionBar";
@@ -21,7 +21,6 @@ import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { HelpSheet } from "../components/HelpSheet";
-import { InfoSheet } from "../components/InfoSheet";
 import { FeedbackSheet } from "../components/FeedbackSheet";
 import { GuidePrompt } from "../components/GuidePrompt";
 import { RestaurantSheet } from "../components/RestaurantSheet";
@@ -86,7 +85,6 @@ export function DeckScreen() {
   const [showHint, setShowHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [infoKey, setInfoKey] = useState<"support" | null>(null);
   const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
@@ -315,8 +313,7 @@ export function DeckScreen() {
       !!detail ||
       showHint ||
       showHelp ||
-      showGuidePrompt ||
-      infoKey !== null;
+      showGuidePrompt;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "?" && !anyModal) {
         setShowHelp(true);
@@ -330,7 +327,7 @@ export function DeckScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt, infoKey]);
+  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt]);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dragX.value, [40, 130], [0, 0.55], Extrapolation.CLAMP),
@@ -355,7 +352,7 @@ export function DeckScreen() {
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
           onFeedback={() => setShowFeedback(true)}
-          onSupport={() => (TIPME_URL ? openExternal(TIPME_URL) : setInfoKey("support"))}
+          onSupport={() => openExternal("https://eatrai.help/support")}
           onLegal={() => openExternal("https://eatrai.help/privacy")}
         />
 
@@ -482,11 +479,6 @@ export function DeckScreen() {
       />
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
       <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />
-      <InfoSheet
-        visible={infoKey !== null}
-        title={t("supportDev")}
-        onClose={() => setInfoKey(null)}
-      />
       <GuidePrompt
         visible={showGuidePrompt}
         onShowMe={acceptGuide}

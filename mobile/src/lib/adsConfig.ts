@@ -18,5 +18,3 @@ export const adSlotId = (slot: AdSlot): string | undefined => SLOT[slot];
 
 // The in-deck ad only mounts when both the client and the deck slot are set.
 export const deckAdsEnabled = (): boolean => !!ADSENSE_CLIENT && !!SLOT.deck;
-
-export const TIPME_URL: string | undefined = process.env.EXPO_PUBLIC_TIPME_URL;

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support the developer — EatRai</title>
+<meta name="description" content="Chip in to keep EatRai free — scan the PromptPay QR.">
+<link rel="canonical" href="https://eatrai.help/support">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+h1,h2{font-family:"Kanit",sans-serif}
+main{max-width:520px;margin:0 auto;padding:44px 22px 64px;text-align:center}
+h1{font-size:26px;margin:0 0 8px;font-weight:700}
+.lede{color:#5b5346;margin:0 0 28px}
+.qr{width:280px;max-width:78vw;height:auto;background:#fff;border:1px solid #ece5d8;border-radius:16px;padding:16px}
+.amounts{color:#5b5346;margin:18px 0 26px;font-size:15px}
+.id{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #ece5d8;border-radius:999px;padding:8px 8px 8px 16px;margin:0 0 10px}
+.id code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}
+.id button{font:inherit;font-size:13px;border:0;background:#FF5A1F;color:#fff;border-radius:999px;padding:6px 14px;cursor:pointer}
+.hint{color:#8a8172;font-size:13px;margin:0 0 8px}
+.soon{background:#fff;border:1px dashed #d8cfbe;border-radius:16px;padding:28px 20px;color:#5b5346}
+hr{border:0;border-top:1px solid #ece5d8;margin:40px 0}
+a{color:#BE4127}
+footer a{color:#8a8172;margin:0 8px;font-size:13px}
+section[lang]{margin-bottom:8px}
+</style>
+</head>
+<body>
+<main>
+
+<section lang="en">
+<h1>Support the developer</h1>
+<p class="lede">EatRai is free and has no ads on this page. If it saved you an argument about where to eat, you can chip in — it goes toward the Google Maps bill that keeps it running.</p>
+</section>
+
+<img class="qr" src="/support/promptpay.png" alt="PromptPay QR code for donating to EatRai"
+     onerror="this.remove();document.getElementById('soon').hidden=false">
+<div class="soon" id="soon" hidden>
+  Donations are coming soon — the PromptPay QR will appear here.<br>
+  <span lang="th">ระบบบริจาคกำลังจะเปิด เร็ว ๆ นี้</span>
+</div>
+
+<p class="amounts">฿20 · ฿50 · ฿100 — or whatever feels right / <span lang="th">หรือเท่าไหร่ก็ได้</span></p>
+
+<p class="hint">Can't scan? PromptPay ID / <span lang="th">พร้อมเพย์:</span></p>
+<div class="id">
+  <code id="ppid">[YOUR-PROMPTPAY-ID]</code>
+  <button type="button" onclick="navigator.clipboard&amp;&amp;navigator.clipboard.writeText(document.getElementById('ppid').textContent.trim());this.textContent='Copied'">Copy</button>
+</div>
+
+<hr>
+
+<section lang="th">
+<h2>สนับสนุนผู้พัฒนา</h2>
+<p class="lede">EatRai ใช้งานฟรีและหน้านี้ไม่มีโฆษณา ถ้าแอปช่วยให้คุณเลือกร้านได้เร็วขึ้น จะสมทบทุนก็ได้ — เงินนำไปจ่ายค่า Google Maps ที่ทำให้แอปทำงานต่อได้</p>
+<p class="hint">สแกน QR ด้านบนด้วยแอปธนาคารใดก็ได้</p>
+</section>
+
+<footer>
+<a href="/">EatRai</a>
+<a href="/privacy">Privacy</a>
+<a href="/terms">Terms</a>
+</footer>
+</main>
+</body>
+</html>

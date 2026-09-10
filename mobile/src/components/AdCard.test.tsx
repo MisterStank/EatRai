@@ -9,7 +9,6 @@ jest.mock("../lib/adsConfig", () => ({
   adSlotId: (slot: string) =>
     ({ deck: "1111111111", detail: "2222222222" } as Record<string, string>)[slot],
   deckAdsEnabled: () => true,
-  TIPME_URL: undefined,
 }));
 
 import React from "react";

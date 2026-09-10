@@ -20,7 +20,6 @@ const API =
   "https://eatrai-223664935213.asia-southeast1.run.app";
 const ADSENSE_CLIENT = process.env.EXPO_PUBLIC_ADSENSE_CLIENT || "";
 const ADSENSE_SLOT = process.env.EXPO_PUBLIC_ADSENSE_SLOT_SEO || "";
-const TIPME_URL = process.env.EXPO_PUBLIC_TIPME_URL || "";
 
 // ---------------------------------------------------------------- pure helpers
 
@@ -213,7 +212,7 @@ ${ad}
 <a href="${SITE}/">EatRai</a>
 <a href="${SITE}/privacy">${isTh ? "ความเป็นส่วนตัว" : "Privacy"}</a>
 <a href="${SITE}/terms">${isTh ? "เงื่อนไข" : "Terms"}</a>
-${TIPME_URL ? `<a href="${esc(TIPME_URL)}" target="_blank" rel="noopener">${isTh ? "สนับสนุนผู้พัฒนา" : "Support the developer"}</a>` : ""}
+<a href="${SITE}/support">${isTh ? "สนับสนุนผู้พัฒนา" : "Support the developer"}</a>
 </footer>
 </body>
 </html>
