@@ -38,7 +38,7 @@ gcloud services enable \
   cloudscheduler.googleapis.com artifactregistry.googleapis.com
 
 echo ">> Pub/Sub topic $TOPIC"
-gcloud pubsub topics create "$TOPIC" || true
+gcloud pubsub topics create "$TOPIC" 2>/dev/null || echo "   (already exists)"
 
 echo ">> budget 'EatRai kill-switch' -> $TOPIC (credits excluded)"
 # Connecting the topic here makes Cloud Billing provision its publisher
@@ -49,12 +49,12 @@ gcloud billing budgets create \
   --display-name="EatRai kill-switch" \
   --budget-amount="${BUDGET_AMOUNT}" \
   --filter-projects="projects/${PROJECT_ID}" \
-  --filter-credit-types-treatment=exclude-all-credits \
+  --credit-types-treatment=exclude-all-credits \
   --threshold-rule=percent=0.5 \
   --threshold-rule=percent=0.9 \
   --threshold-rule=percent=1.0 \
   --threshold-rule=percent=1.2,basis=forecasted-spend \
-  --all-updates-rule-pubsub-topic="projects/${PROJECT_ID}/topics/${TOPIC}" \
+  --notifications-rule-pubsub-topic="projects/${PROJECT_ID}/topics/${TOPIC}" \
   || echo "   (budget may already exist — check: gcloud billing budgets list --billing-account=$BILLING_ACCOUNT_ID)"
 
 # Belt-and-braces: also grant the publisher explicitly. Best-effort — the system
