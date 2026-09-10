@@ -23,8 +23,10 @@ describe("hand-maintained static pages", () => {
     expect(html).toMatch(/data-lang-btn="en"/);
     expect(html).toMatch(/data-lang-btn="th"/);
     expect(html).toContain('src="/lang-toggle.js"');
-    // back-to-app link, top-left
-    expect(html).toMatch(/<a href="\/">← EatRai<\/a>/);
+    // back-to-app button, top-left, bilingual
+    expect(html).toMatch(/<a href="\/" class="back">/);
+    expect(html).toContain("Back to EatRai");
+    expect(html).toContain("กลับไปยัง EatRai");
     // synchronous <head> language set (no flash of both languages)
     expect(html).toContain('document.documentElement.setAttribute("data-lang"');
     // both languages are actually present, hidden via CSS not deleted
