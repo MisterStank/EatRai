@@ -41,11 +41,17 @@ type Config struct {
 	RateLimitRPM int `envconfig:"RATE_LIMIT_RPM" default:"60"`
 
 	// FreeCap* are the per-month, per-SKU real-Google-call budgets the in-memory
-	// quota meter degrades at (at 90%). Set from Google's current per-SKU free
-	// tier — verify before shipping. 0 = no limit for that SKU.
-	FreeCapSearch  int `envconfig:"FREE_CAP_SEARCH" default:"5000"`
-	FreeCapDetails int `envconfig:"FREE_CAP_DETAILS" default:"5000"`
-	FreeCapPhoto   int `envconfig:"FREE_CAP_PHOTO" default:"10000"`
+	// quota meter degrades at (at 90%). 0 = no limit for that SKU.
+	//
+	// Verified 2026-09-11 (docs/COST_AND_MONETIZATION_PLAN.md 13.1): EatRai's
+	// /nearby field mask (rating, priceLevel, priceRange, currentOpeningHours,
+	// photos) bills as Text Search Enterprise + Atmosphere, and /place similarly —
+	// both Enterprise-class SKUs with a 1,000/month free tier, not 10k. Place
+	// Photo is ~$7/1k with a ~5,000 free tier. The GCP budget kill-switch (฿500)
+	// is the hard no-loss backstop; these just soft-degrade early.
+	FreeCapSearch  int `envconfig:"FREE_CAP_SEARCH" default:"1000"`
+	FreeCapDetails int `envconfig:"FREE_CAP_DETAILS" default:"1000"`
+	FreeCapPhoto   int `envconfig:"FREE_CAP_PHOTO" default:"5000"`
 
 	// IPLimit* budget cache-miss /nearby fetches per client. Inner limit is per
 	// (IP | X-EatRai-Client token); outer ceiling is per IP across all tokens.
