@@ -73,6 +73,15 @@ echo ">> grant it permission to update ONLY the $RUN_SERVICE service"
 gcloud run services add-iam-policy-binding "$RUN_SERVICE" --region="$REGION" \
   --member="serviceAccount:${FN_SA}" --role="roles/run.admin"
 
+# If $RUN_SERVICE was deployed from source, its revisions point at an image in
+# the region's cloud-run-source-deploy repo; update_service re-validates that the
+# caller can read it.
+echo ">> (if deployed-from-source) grant AR reader on cloud-run-source-deploy"
+gcloud artifacts repositories add-iam-policy-binding cloud-run-source-deploy \
+  --location="$REGION" \
+  --member="serviceAccount:${FN_SA}" --role="roles/artifactregistry.reader" 2>/dev/null \
+  || echo "   (no such repo — service built a different way; skipping)"
+
 RUNTIME_SA="$(gcloud run services describe "$RUN_SERVICE" --region="$REGION" \
   --format='value(spec.template.spec.serviceAccountName)')"
 if [ -n "$RUNTIME_SA" ]; then
