@@ -12,14 +12,15 @@
 set -euo pipefail
 
 # ---- fill these in -----------------------------------------------------------
-PROJECT_ID="${PROJECT_ID:-CHANGE_ME}"                 # e.g. eatrai-prod
-BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-CHANGE_ME}" # gcloud billing accounts list  ->  XXXXXX-XXXXXX-XXXXXX
+PROJECT_ID="${PROJECT_ID:-CHANGE_ME}"                 # gcloud projects list  (the one owning the 'eatrai' Cloud Run service)
+BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-0186D6-72AD25-4619AC}"
 REGION="${REGION:-asia-southeast1}"
 RUN_SERVICE="${RUN_SERVICE:-eatrai}"
 
-BUDGET_AMOUNT="${BUDGET_AMOUNT:-15}"                  # monthly budget, in the billing account currency
+# Billing account currency is THB. $15/mo target (plan Part 13) ≈ ฿520; rounded to 500.
+BUDGET_AMOUNT="${BUDGET_AMOUNT:-500}"                 # monthly budget, in THB
 KILL_AT="${KILL_AT:-1.0}"                             # trip at 100% of budget (a threshold alert or cost ratio)
-KILL_AT_ABS="${KILL_AT_ABS:-15}"                      # also trip if month-to-date cost hits this absolute amount
+KILL_AT_ABS="${KILL_AT_ABS:-500}"                     # also trip if month-to-date cost hits ฿500
 AUTO_RESTORE="${AUTO_RESTORE:-false}"                 # keep false: recovery should be a human decision
 # ---------------------------------------------------------------------------
 
