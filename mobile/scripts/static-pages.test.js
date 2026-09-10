@@ -18,11 +18,11 @@ describe("hand-maintained static pages", () => {
   test("support page: QR image self-heals to a 'coming soon' block", () => {
     const html = read("support");
     // the <img> hides itself and reveals #soon on error
-    expect(html).toMatch(/src="\/support\/promptpay\.png"[^>]*onerror=[^>]*getElementById\('soon'\)\.hidden=false/);
+    expect(html).toMatch(/src="\/support\/promptpay\.(png|jpg)"[^>]*onerror=[^>]*getElementById\('soon'\)\.hidden=false/);
     // #soon is hidden until then
     expect(html).toMatch(/<div class="soon" id="soon" hidden>/);
-    // a fill-me PromptPay id placeholder
-    expect(html).toContain("[YOUR-PROMPTPAY-ID]");
+    // the QR image is the only payment path — no plaintext account id on the page
+    expect(html).not.toMatch(/0805/);
   });
 
   test("no dead TipMe references", () => {
