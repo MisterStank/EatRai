@@ -57,14 +57,13 @@ gcloud billing budgets create \
   --notifications-rule-pubsub-topic="projects/${PROJECT_ID}/topics/${TOPIC}" \
   || echo "   (budget may already exist — check: gcloud billing budgets list --billing-account=$BILLING_ACCOUNT_ID)"
 
-# Belt-and-braces: also grant the publisher explicitly. Best-effort — the system
-# service account may not resolve until the budget above has fully propagated
-# (retry this one line later if it warns); the budget's auto-grant is usually enough.
-echo ">> (best effort) grant billing-budgets publisher on $TOPIC"
-gcloud pubsub topics add-iam-policy-binding "$TOPIC" \
-  --member="serviceAccount:billing-budgets@system.gserviceaccount.com" \
-  --role="roles/pubsub.publisher" \
-  || echo "   skipped — the budget's automatic grant covers this; verify with: gcloud pubsub topics get-iam-policy $TOPIC"
+# Attaching the topic to the budget above auto-grants pubsub.publisher to
+# billing-budget-alert@system.gserviceaccount.com. Just verify it landed.
+echo ">> verify budget publisher on $TOPIC"
+gcloud pubsub topics get-iam-policy "$TOPIC" --format='value(bindings.members)' \
+  | grep -q "billing-budget-alert@system.gserviceaccount.com" \
+  && echo "   ok" \
+  || echo "   WARN: publisher grant not visible yet — re-check in a minute: gcloud pubsub topics get-iam-policy $TOPIC"
 
 echo ">> runtime service account for the function"
 gcloud iam service-accounts create eatrai-killswitch \
