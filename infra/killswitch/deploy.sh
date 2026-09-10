@@ -92,6 +92,18 @@ gcloud functions deploy "$FUNCTION" \
   --memory=256Mi --timeout=300s --max-instances=3 \
   --set-env-vars="RUN_PROJECT=${PROJECT_ID},RUN_REGION=${REGION},RUN_SERVICE=${RUN_SERVICE},KILL_AT=${KILL_AT},KILL_AT_ABS=${KILL_AT_ABS},AUTO_RESTORE=${AUTO_RESTORE}"
 
+echo ">> wire the Pub/Sub -> function trigger auth (a custom --service-account skips the auto-grant)"
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+# the trigger SA must be able to invoke the function's own Cloud Run service
+gcloud run services add-iam-policy-binding "$FUNCTION" --region="$REGION" \
+  --member="serviceAccount:${FN_SA}" --role="roles/run.invoker"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${FN_SA}" --role="roles/eventarc.eventReceiver" --condition=None
+# the Pub/Sub service agent mints the OIDC token for the push
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator" --condition=None
+
 cat <<EOF
 
 Done.
