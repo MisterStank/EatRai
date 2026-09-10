@@ -23,13 +23,14 @@ ad revenue, so EatRai cannot run at a loss.
 
 ## Deploy
 
-1. Get your billing account id: `gcloud billing accounts list`.
-2. Edit the `CHANGE_ME` values at the top of `deploy.sh` (or pass them as env vars).
+1. Billing account id is pre-filled (`0186D6-72AD25-4619AC`, currency THB).
+2. Set `PROJECT_ID` at the top of `deploy.sh` — the project that owns the `eatrai`
+   Cloud Run service (`gcloud projects list`, or `gcloud run services list --region asia-southeast1`).
 3. `./deploy.sh`
 
-Defaults: **15** monthly budget, credits **excluded**, trips at 100% of budget
-**or** an absolute month-to-date cost of 15. `AUTO_RESTORE=false` — recovery is a
-deliberate human action.
+Defaults: **฿500** monthly budget (≈ the $15/mo cap in plan Part 13), credits
+**excluded**, trips at 100% of budget **or** an absolute month-to-date cost of
+฿500. `AUTO_RESTORE=false` — recovery is a deliberate human action.
 
 ## Verify (no spend)
 
