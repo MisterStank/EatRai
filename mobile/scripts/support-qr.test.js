@@ -46,6 +46,26 @@ describe("support page PromptPay pipeline", () => {
     expect(document.getElementById("give").textContent).toContain("50");
   });
 
+  test("save button appears and triggers a download of the current QR", () => {
+    setup("en");
+    const btn = document.getElementById("saveqr");
+    expect(btn.hidden).toBe(false);
+
+    let downloaded = null;
+    const orig = window.HTMLAnchorElement.prototype.click;
+    window.HTMLAnchorElement.prototype.click = function () {
+      downloaded = { href: this.href, name: this.getAttribute("download") };
+    };
+    try {
+      document.querySelector('[data-amt="50"]').click();
+      btn.click();
+    } finally {
+      window.HTMLAnchorElement.prototype.click = orig;
+    }
+    expect(downloaded).not.toBeNull();
+    expect(downloaded.name).toBe("eatrai-promptpay-50baht.png");
+  });
+
   test("custom amount out of range falls back to an amountless QR", () => {
     setup("en");
     const input = document.getElementById("custom");

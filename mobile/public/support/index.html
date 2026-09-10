@@ -43,6 +43,8 @@ h2{font-size:19px;margin:0 0 6px;font-weight:600}
 .chips button[aria-pressed="true"]{background:#FF5A1F;border-color:#FF5A1F;color:#fff}
 .custom{margin:12px 0 0}
 .custom input{font:inherit;font-size:15px;width:150px;text-align:center;border:1px solid #e2dac9;border-radius:999px;padding:8px 14px;background:#fff}
+.save{display:inline-block;margin:14px 0 0;font:inherit;font-size:14px;border:1px solid #e2dac9;background:#fff;color:#3a352c;border-radius:999px;padding:8px 20px;cursor:pointer}
+.save:hover{background:#f4eee2}
 .hint{color:#8a8172;font-size:13px;margin:14px 0 0}
 .about{margin:36px 0 0;padding:20px;background:#fff;border:1px solid #ece5d8;border-radius:16px;text-align:left}
 .about p{margin:0 0 10px;font-size:15px;color:#3a352c}
@@ -88,6 +90,10 @@ html[data-lang="th"] .lang-en{display:none}
   <input id="custom" type="number" inputmode="numeric" min="1" max="100000" step="1"
          placeholder="฿ …" aria-label="Custom amount in baht">
 </div>
+
+<button type="button" id="saveqr" class="save" hidden>
+  <span class="lang-en" lang="en">Save QR image</span><span class="lang-th" lang="th">บันทึกรูป QR</span>
+</button>
 
 <p class="hint">
   <span class="lang-en" lang="en">Scan with any Thai banking app · your app shows the amount before you confirm.</span>
