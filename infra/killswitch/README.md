@@ -23,10 +23,12 @@ ad revenue, so EatRai cannot run at a loss.
 
 ## Deploy
 
-1. Billing account id is pre-filled (`0186D6-72AD25-4619AC`, currency THB).
-2. Set `PROJECT_ID` at the top of `deploy.sh` — the project that owns the `eatrai`
-   Cloud Run service (`gcloud projects list`, or `gcloud run services list --region asia-southeast1`).
-3. `./deploy.sh`
+All values are pre-filled (project `eatrai`, billing account `0186D6-72AD25-4619AC`
+in THB, region `asia-southeast1`, service `eatrai`). Just:
+
+```sh
+cd infra/killswitch && ./deploy.sh
+```
 
 Defaults: **฿500** monthly budget (≈ the $15/mo cap in plan Part 13), credits
 **excluded**, trips at 100% of budget **or** an absolute month-to-date cost of

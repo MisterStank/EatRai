@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # ---- fill these in -----------------------------------------------------------
-PROJECT_ID="${PROJECT_ID:-CHANGE_ME}"                 # gcloud projects list  (the one owning the 'eatrai' Cloud Run service)
+PROJECT_ID="${PROJECT_ID:-eatrai}"                    # project number 223664935213
 BILLING_ACCOUNT_ID="${BILLING_ACCOUNT_ID:-0186D6-72AD25-4619AC}"
 REGION="${REGION:-asia-southeast1}"
 RUN_SERVICE="${RUN_SERVICE:-eatrai}"
