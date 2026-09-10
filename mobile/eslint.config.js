@@ -31,7 +31,15 @@ const JEST = {
 module.exports = [
   ...expoConfig,
   {
-    ignores: ['dist/*', 'node_modules/*', '.expo/*', 'coverage/*', 'public/near/*', 'public/th/*'],
+    ignores: [
+      'dist/*',
+      'node_modules/*',
+      '.expo/*',
+      'coverage/*',
+      'public/near/*',
+      'public/th/*',
+      'public/**/*.js', // static browser assets (lang toggle, vendored QR lib, PromptPay builder)
+    ],
   },
   {
     // build tooling — plain Node CommonJS, not the app bundle
