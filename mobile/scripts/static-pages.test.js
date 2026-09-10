@@ -13,12 +13,18 @@ describe("hand-maintained static pages", () => {
     const html = read(page);
     expect(html).toContain(`<link rel="canonical" href="${canonical}">`);
     expect(html).toMatch(/<html lang="en">/);
+    // AdSense can verify + crawl every page even while ad units are dark
+    expect(html).toContain(
+      '<meta name="google-adsense-account" content="ca-pub-3020689866862162">',
+    );
     // real lang markers on the Thai content (a11y + crawlers)
     expect(html).toMatch(/lang="th"/);
     // EN/ไทย toggle wired to the shared script
     expect(html).toMatch(/data-lang-btn="en"/);
     expect(html).toMatch(/data-lang-btn="th"/);
     expect(html).toContain('src="/lang-toggle.js"');
+    // back-to-app link, top-left
+    expect(html).toMatch(/<a href="\/">← EatRai<\/a>/);
     // synchronous <head> language set (no flash of both languages)
     expect(html).toContain('document.documentElement.setAttribute("data-lang"');
     // both languages are actually present, hidden via CSS not deleted
