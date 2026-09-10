@@ -140,9 +140,17 @@ def _set_mock(on: bool, reason: str) -> str:
     if DRY_RUN:
         return f"DRY_RUN: would set MOCK={'true' if on else '(removed)'} — {reason}"
 
+    # update_service returning an operation means Cloud Run accepted the change and
+    # the new revision is rolling out. Confirming the rollout needs project-scoped
+    # run.operations.get, which the service-scoped run.admin grant doesn't cover —
+    # so treat a polling failure as "submitted, unconfirmed" rather than an error.
     op = client.update_service(service=svc)
-    op.result(timeout=300)
-    return f"MOCK={'true' if on else '(removed)'} deployed — {reason}"
+    verb = "true" if on else "(removed)"
+    try:
+        op.result(timeout=180)
+        return f"MOCK={verb} deployed — {reason}"
+    except Exception as e:  # noqa: BLE001 — best-effort confirmation only
+        return f"MOCK={verb} submitted (rollout not confirmed: {type(e).__name__}) — {reason}"
 
 
 # --------------------------------------------------------------------- entry pt
