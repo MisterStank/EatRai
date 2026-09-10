@@ -33,6 +33,7 @@ describe("hand-maintained static pages", () => {
     expect(html).toMatch(/data-amt="20"/);
     expect(html).toMatch(/data-amt="100"/);
     expect(html).toMatch(/id="custom"/);
+    expect(html).toMatch(/id="saveqr"/);
     // JS-off / render-failure fallback still points at the committed image
     expect(html).toContain('src="/support/promptpay.jpg"');
     expect(html).toMatch(/<noscript>/);

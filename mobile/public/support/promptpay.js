@@ -50,14 +50,70 @@
   var qrimg = document.getElementById("qrimg");
   var fallback = document.getElementById("qrfallback");
   var give = document.getElementById("give");
+  var saveBtn = document.getElementById("saveqr");
   if (!chips || !qrimg) return;
 
   var amount = ""; // "" => no amount baked in
+  var current = null; // last successfully built qrcode object, or null on fallback
 
   function showFallback() {
+    current = null;
     if (qrimg) qrimg.hidden = true;
     if (fallback) fallback.hidden = false;
+    if (saveBtn) saveBtn.hidden = false; // still lets the visitor save the fallback image
   }
+
+  function saveImage() {
+    var link = document.createElement("a");
+    if (!current) {
+      link.href = "/support/promptpay.jpg";
+      link.download = "eatrai-promptpay.jpg";
+      link.click();
+      return;
+    }
+    var name = "eatrai-promptpay" + (amount ? "-" + amount + "baht" : "") + ".png";
+    var n = current.getModuleCount();
+    var scale = 12;
+    var quiet = 4;
+    var size = (n + quiet * 2) * scale;
+    var canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    var ctx;
+    try { ctx = canvas.getContext && canvas.getContext("2d"); } catch (e) { ctx = null; }
+    if (!ctx) {
+      // no canvas support — fall back to the on-screen (smaller) QR image
+      link.href = current.createDataURL(8, quiet);
+      link.download = name;
+      link.click();
+      return;
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#000000";
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        if (current.isDark(r, c)) {
+          ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+        }
+      }
+    }
+    var done = function (href, revoke) {
+      link.href = href;
+      link.download = name;
+      link.click();
+      if (revoke) setTimeout(function () { URL.revokeObjectURL(href); }, 1000);
+    };
+    if (canvas.toBlob) {
+      canvas.toBlob(function (blob) {
+        if (blob) done(URL.createObjectURL(blob), true);
+        else done(canvas.toDataURL("image/png"), false);
+      }, "image/png");
+    } else {
+      done(canvas.toDataURL("image/png"), false);
+    }
+  }
+
+  if (saveBtn) saveBtn.addEventListener("click", saveImage);
 
   function label() {
     if (!give) return;
@@ -79,6 +135,8 @@
       qrimg.src = q.createDataURL(6, 2);
       qrimg.hidden = false;
       if (fallback) fallback.hidden = true;
+      current = q;
+      if (saveBtn) saveBtn.hidden = false;
     } catch (e) {
       showFallback();
     }
