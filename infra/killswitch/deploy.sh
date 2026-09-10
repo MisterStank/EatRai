@@ -82,6 +82,12 @@ gcloud artifacts repositories add-iam-policy-binding cloud-run-source-deploy \
   --member="serviceAccount:${FN_SA}" --role="roles/artifactregistry.reader" 2>/dev/null \
   || echo "   (no such repo — service built a different way; skipping)"
 
+# read-only project role so the function can poll its own rollout operation
+# (run.operations.get is project-scoped, not covered by the service-scoped grant)
+echo ">> grant run.viewer (project, read-only) so rollout confirmation works"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${FN_SA}" --role="roles/run.viewer" --condition=None
+
 RUNTIME_SA="$(gcloud run services describe "$RUN_SERVICE" --region="$REGION" \
   --format='value(spec.template.spec.serviceAccountName)')"
 if [ -n "$RUNTIME_SA" ]; then
