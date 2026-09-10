@@ -33,7 +33,9 @@ a{color:#BE4127}
 .muted{color:#8a8172;font-size:14px}
 hr{border:0;border-top:1px solid #ece5d8;margin:40px 0}
 .langbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.langbar a{color:#8a8172;font-size:13px;font-weight:600;text-decoration:none}
+.back{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;text-decoration:none;color:#5b5346;border:1px solid #e2dac9;background:#fff;border-radius:999px;padding:6px 13px}
+.back:hover{background:#f4eee2}
+.back svg{flex:none}
 .langbar .toggle{display:flex}
 .langbar button{font:inherit;font-size:13px;border:1px solid #e2dac9;background:#fff;color:#8a8172;padding:5px 12px;cursor:pointer}
 .langbar button:first-child{border-radius:999px 0 0 999px}
@@ -46,7 +48,10 @@ html[data-lang="th"] .lang-en{display:none}
 <body>
 <main>
 <div class="langbar">
-  <a href="/">← EatRai</a>
+  <a href="/" class="back">
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 6l-6 6 6 6"/></svg>
+    <span class="lang-en" lang="en">Back to EatRai</span><span class="lang-th" lang="th">กลับไปยัง EatRai</span>
+  </a>
   <span class="toggle">
     <button type="button" data-lang-btn="en">EN</button>
     <button type="button" data-lang-btn="th">ไทย</button>
