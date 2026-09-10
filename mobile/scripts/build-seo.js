@@ -173,26 +173,26 @@ ${adScript}
 *{box-sizing:border-box}
 body{margin:0;font:16px/1.55 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
 h1,h2,.cta{font-family:"Kanit",sans-serif}
-a{color:#BE4127}
+a{color:#FF5A1F}
 header,main,footer{max-width:720px;margin:0 auto;padding:0 20px}
 header{padding-top:32px}
 h1{font-size:26px;line-height:1.25;margin:0 0 8px;font-weight:700}
-.lede{color:#5b5346;margin:0 0 20px}
+.lede{color:#6B6358;margin:0 0 20px}
 .cta{display:inline-block;background:#FF5A1F;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;margin:4px 0 24px}
 .ad{margin:24px 0;min-height:100px}
 ul{list-style:none;padding:0;margin:0}
-.card{display:flex;gap:14px;background:#fff;border:1px solid #ece5d8;border-radius:14px;padding:12px;margin:12px 0}
-.thumb{width:120px;height:90px;object-fit:cover;border-radius:10px;flex:none;background:#efe7d8}
-.thumb.noimg{background:linear-gradient(135deg,#F4AE63,#BE4127)}
+.card{display:flex;gap:14px;background:#fff;border:1px solid #E8E0D3;border-radius:14px;padding:12px;margin:12px 0}
+.thumb{width:120px;height:90px;object-fit:cover;border-radius:10px;flex:none;background:#E8E0D3}
+.thumb.noimg{background:linear-gradient(135deg,#FFC24B,#FF5A1F)}
 .meta{min-width:0}
 h2{font-size:17px;margin:2px 0 4px}
-.sub{margin:0 0 4px;color:#5b5346;font-size:14px}
-.addr{margin:0 0 6px;color:#8a8172;font-size:13px}
+.sub{margin:0 0 4px;color:#6B6358;font-size:14px}
+.addr{margin:0 0 6px;color:#9A9084;font-size:13px}
 .maps{font-size:13px;font-weight:600;text-decoration:none}
 .siblings{margin:28px 0 8px;line-height:2}
 .siblings a{display:inline-block;margin-right:10px;font-size:14px}
-footer{padding:24px 20px 48px;color:#8a8172;font-size:13px;border-top:1px solid #ece5d8;margin-top:32px}
-footer a{color:#8a8172;margin-right:14px}
+footer{padding:24px 20px 48px;color:#9A9084;font-size:13px;border-top:1px solid #E8E0D3;margin-top:32px}
+footer a{color:#9A9084;margin-right:14px}
 @media(max-width:480px){.thumb{width:92px;height:78px}}
 </style>
 </head>
