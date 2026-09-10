@@ -18,11 +18,6 @@ jest.mock("../lib/deckAds", () => ({
   },
 }));
 
-jest.mock("../lib/adsConfig", () => ({
-  ...jest.requireActual("../lib/adsConfig"),
-  TIPME_URL: "https://tipme.in.th/eatrai",
-}));
-
 const mockOpenExternal = jest.fn();
 jest.mock("../lib/linking", () => ({ openExternal: (...a: unknown[]) => mockOpenExternal(...a) }));
 
@@ -102,7 +97,7 @@ describe("DeckScreen — ads", () => {
     expect(useSession.getState().liked.map((l) => l.id)).toEqual(["a"]);
   }, 60000);
 
-  test('the "Support the developer" menu row opens the TipMe link', async () => {
+  test('the "Support the developer" menu row opens the /support page', async () => {
     mockGetNearby.mockResolvedValue([card("a")]);
     const { getByLabelText, getByText } = renderScreen();
     await waitFor(
@@ -115,6 +110,6 @@ describe("DeckScreen — ads", () => {
     });
     fireEvent.press(getByText("Support the developer"));
 
-    expect(mockOpenExternal).toHaveBeenCalledWith("https://tipme.in.th/eatrai");
+    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support");
   }, 60000);
 });
