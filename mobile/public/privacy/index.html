@@ -7,6 +7,7 @@
 <meta name="description" content="How EatRai handles your data.">
 <link rel="canonical" href="https://eatrai.help/privacy">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="google-adsense-account" content="ca-pub-3020689866862162">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
@@ -31,7 +32,9 @@ p,li{color:#3a352c}
 a{color:#BE4127}
 .muted{color:#8a8172;font-size:14px}
 hr{border:0;border-top:1px solid #ece5d8;margin:40px 0}
-.langbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.langbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.langbar a{color:#8a8172;font-size:13px;font-weight:600;text-decoration:none}
+.langbar .toggle{display:flex}
 .langbar button{font:inherit;font-size:13px;border:1px solid #e2dac9;background:#fff;color:#8a8172;padding:5px 12px;cursor:pointer}
 .langbar button:first-child{border-radius:999px 0 0 999px}
 .langbar button:last-child{border-radius:0 999px 999px 0;border-left:0}
@@ -43,8 +46,11 @@ html[data-lang="th"] .lang-en{display:none}
 <body>
 <main>
 <div class="langbar">
-  <button type="button" data-lang-btn="en">EN</button>
-  <button type="button" data-lang-btn="th">ไทย</button>
+  <a href="/">← EatRai</a>
+  <span class="toggle">
+    <button type="button" data-lang-btn="en">EN</button>
+    <button type="button" data-lang-btn="th">ไทย</button>
+  </span>
 </div>
 <div class="lang-en" lang="en">
 <h1>Privacy Policy</h1>

@@ -7,6 +7,7 @@
 <meta name="description" content="Chip in to keep EatRai free — pick an amount and scan the PromptPay QR.">
 <link rel="canonical" href="https://eatrai.help/support">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="google-adsense-account" content="ca-pub-3020689866862162">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
@@ -29,7 +30,9 @@ main{max-width:520px;margin:0 auto;padding:20px 22px 64px;text-align:center}
 h1{font-size:26px;margin:0 0 8px;font-weight:700}
 h2{font-size:19px;margin:0 0 6px;font-weight:600}
 .lede{color:#5b5346;margin:0 0 24px}
-.langbar{display:flex;justify-content:flex-end;margin-bottom:8px}
+.langbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.langbar a{color:#8a8172;font-size:13px;font-weight:600;text-decoration:none}
+.langbar .toggle{display:flex}
 .langbar button{font:inherit;font-size:13px;border:1px solid #e2dac9;background:#fff;color:#8a8172;padding:5px 12px;cursor:pointer}
 .langbar button:first-child{border-radius:999px 0 0 999px}
 .langbar button:last-child{border-radius:0 999px 999px 0;border-left:0}
@@ -43,8 +46,9 @@ h2{font-size:19px;margin:0 0 6px;font-weight:600}
 .chips button[aria-pressed="true"]{background:#FF5A1F;border-color:#FF5A1F;color:#fff}
 .custom{margin:12px 0 0}
 .custom input{font:inherit;font-size:15px;width:150px;text-align:center;border:1px solid #e2dac9;border-radius:999px;padding:8px 14px;background:#fff}
-.save{display:inline-block;margin:14px 0 0;font:inherit;font-size:14px;border:1px solid #e2dac9;background:#fff;color:#3a352c;border-radius:999px;padding:8px 20px;cursor:pointer}
+.save{display:inline-flex;align-items:center;gap:7px;margin:14px 0 0;font:inherit;font-size:14px;border:1px solid #e2dac9;background:#fff;color:#3a352c;border-radius:999px;padding:8px 20px;cursor:pointer}
 .save:hover{background:#f4eee2}
+.save .dl{flex:none}
 .hint{color:#8a8172;font-size:13px;margin:14px 0 0}
 .about{margin:36px 0 0;padding:20px;background:#fff;border:1px solid #ece5d8;border-radius:16px;text-align:left}
 .about p{margin:0 0 10px;font-size:15px;color:#3a352c}
@@ -61,8 +65,11 @@ html[data-lang="th"] .lang-en{display:none}
 <main>
 
 <div class="langbar">
-  <button type="button" data-lang-btn="en">EN</button>
-  <button type="button" data-lang-btn="th">ไทย</button>
+  <a href="/">← EatRai</a>
+  <span class="toggle">
+    <button type="button" data-lang-btn="en">EN</button>
+    <button type="button" data-lang-btn="th">ไทย</button>
+  </span>
 </div>
 
 <h1><span class="lang-en" lang="en">Support the developer</span><span class="lang-th" lang="th">สนับสนุนผู้พัฒนา</span></h1>
@@ -92,7 +99,10 @@ html[data-lang="th"] .lang-en{display:none}
 </div>
 
 <button type="button" id="saveqr" class="save" hidden>
-  <span class="lang-en" lang="en">Save QR image</span><span class="lang-th" lang="th">บันทึกรูป QR</span>
+  <svg class="dl" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+  </svg><span class="lang-en" lang="en">Save QR image</span><span class="lang-th" lang="th">บันทึกรูป QR</span>
 </button>
 
 <p class="hint">

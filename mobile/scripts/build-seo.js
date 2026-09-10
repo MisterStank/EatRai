@@ -103,6 +103,9 @@ function pageHtml({ area, lang, cards, siblings }) {
     ? `รวมร้านอาหารน่ากินใน${name} เรียงตามคะแนนรีวิว พร้อมราคา ระยะทาง และแผนที่ — เปิดใน EatRai เพื่อปัดเลือกต่อ`
     : `A ranked list of the best-rated places to eat in ${name}, with prices and maps. Open in EatRai to swipe through more.`;
 
+  const adSenseMeta = ADSENSE_CLIENT
+    ? `<meta name="google-adsense-account" content="${esc(ADSENSE_CLIENT)}">`
+    : "";
   const adScript =
     ADSENSE_CLIENT && ADSENSE_SLOT
       ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${esc(ADSENSE_CLIENT)}" crossorigin="anonymous"></script>`
@@ -159,6 +162,7 @@ function pageHtml({ area, lang, cards, siblings }) {
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${canonical}">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+${adSenseMeta}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
