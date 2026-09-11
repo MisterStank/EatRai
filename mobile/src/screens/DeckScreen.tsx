@@ -262,10 +262,10 @@ export function DeckScreen() {
   const activeCard = current && !isAd(current) ? current : null;
   const currentIsAd = !!current && isAd(current);
 
-  // The in-deck ad's "Skip ad" button is disabled with a countdown for
-  // AD_SKIP_DELAY_MS after the ad becomes the top card. Swipe is never gated
-  // by this — resolve() already lets a swipe skip the ad at any time — so the
-  // card stays dismissible by some means at every moment. Part 11.1e.
+  // The in-deck ad is fully locked (button disabled + swipe disabled) for
+  // AD_SKIP_DELAY_MS after it becomes the top card, then releases both at
+  // once. Chosen after a live A/B trial against the button-only-gated
+  // variant — see Part 11.1e for the full reasoning and the accepted risk.
   const [adSkipProgress, setAdSkipProgress] = useState(currentIsAd ? 0 : 1);
   useEffect(() => {
     if (!currentIsAd) {
@@ -459,7 +459,14 @@ export function DeckScreen() {
           ) : (
             stack.map((card, i) => (
               <View key={card.id} style={[StyleSheet.absoluteFill, { zIndex: stack.length - i }]}>
-                <SwipeCard card={card} depth={i} dragX={dragX} onResolve={resolve} onDetail={openDetail} />
+                <SwipeCard
+                  card={card}
+                  depth={i}
+                  dragX={dragX}
+                  onResolve={resolve}
+                  onDetail={openDetail}
+                  adSwipeLocked={i === 0 && !adSkipReady}
+                />
               </View>
             ))
           )}

@@ -28,12 +28,14 @@ export function SwipeCard({
   dragX,
   onResolve,
   onDetail,
+  adSwipeLocked, // top card is the ad, still within its Skip-ad countdown window
 }: {
   card: DeckItem;
   depth: number; // 0 = top / interactive
   dragX?: SharedValue<number>;
   onResolve: (dir: SwipeDir) => void;
   onDetail: () => void;
+  adSwipeLocked?: boolean;
 }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
@@ -69,7 +71,7 @@ export function SwipeCard({
     });
 
   const pan = Gesture.Pan()
-    .enabled(isTop)
+    .enabled(isTop && !(ad && adSwipeLocked))
     .onChange((e) => {
       x.value = e.translationX;
       y.value = e.translationY;

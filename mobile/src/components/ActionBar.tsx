@@ -27,9 +27,9 @@ export function ActionBar({
   // instead of directions, since there's no restaurant to navigate to.
   variant?: "restaurant" | "ad";
   // Only meaningful when variant === "ad". The Skip button is disabled and
-  // shows a countdown until adSkipReady — swipe is NEVER gated by this, it
-  // always works, so the card stays dismissible by some means at every
-  // moment. See deckAds.ts AD_SKIP_DELAY_MS / plan Part 11.1e.
+  // shows a countdown until adSkipReady — DeckScreen also disables swipe on
+  // the card for the same window (full lock, chosen after a live A/B trial).
+  // See deckAds.ts AD_SKIP_DELAY_MS / plan Part 11.1e.
   adSkipReady?: boolean;
   adSkipProgress?: number; // 0..1, drives the fill bar while waiting
   adSkipSecondsLeft?: number;
