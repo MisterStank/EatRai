@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { color, radius } from "../theme/tokens";
+import { StyleSheet, Text, View } from "react-native";
+import { color, font, radius, space } from "../theme/tokens";
+import { useT } from "../lib/i18n";
 import { ADSENSE_CLIENT, adSlotId } from "../lib/adsConfig";
 
 // A single AdSense display unit, web-only. See docs/COST_AND_MONETIZATION_PLAN.md
 // Part 11.1. It is NEVER a gate: whatever renders it (a deck card, the detail
 // sheet, the end-of-deck state) stays swipeable / scrollable. Renders `null`
-// when: not web, no env config, the slot goes unfilled, or (deck only) the
-// 60-second frequency cap is active.
+// on native (ads are web-only, out of scope). On web, when there's no real ad
+// to show (not configured yet, or this slot went unfilled, or — deck only —
+// the 60-second frequency cap is active) it shows a small branded filler
+// instead of blank space, so the card never looks broken pre-AdSense-approval.
 //
 // No fade-in (removed 2026-09-11): verified against Google's own viewability
 // docs that Active View measures DOM/viewport position, not CSS opacity, so a
@@ -41,13 +44,25 @@ export function deckGapOK(now = Date.now()): boolean {
   return now - lastDeckAdAt >= DECK_MIN_GAP_MS;
 }
 
+function AdFallback() {
+  const t = useT();
+  return (
+    <View style={styles.fallback}>
+      <Text style={styles.fallbackEmoji}>🍜🎉</Text>
+      <Text style={styles.fallbackBrand}>{t("adFallbackBrand")}</Text>
+      <Text style={styles.fallbackSupport}>{t("adFallbackSupport")}</Text>
+    </View>
+  );
+}
+
 export function AdCard({ slot, style }: { slot: AdSlot; style?: object }) {
   const insRef = useRef<HTMLModElement | null>(null);
   const [unfilled, setUnfilled] = useState(false);
 
   // Web-only: native RN has no `document`, so this is false there.
+  const isWeb = typeof document !== "undefined";
   const slotId = adSlotId(slot);
-  const configured = typeof document !== "undefined" && !!ADSENSE_CLIENT && !!slotId;
+  const configured = isWeb && !!ADSENSE_CLIENT && !!slotId;
   const enabled = configured && (slot !== "deck" || deckGapOK());
 
   useEffect(() => {
@@ -66,7 +81,15 @@ export function AdCard({ slot, style }: { slot: AdSlot; style?: object }) {
     return () => clearTimeout(check);
   }, [enabled, slot]);
 
-  if (!enabled || unfilled) return null;
+  if (!isWeb) return null;
+
+  if (!enabled || unfilled) {
+    return (
+      <View style={[styles.wrap, style]}>
+        <AdFallback />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrap, style]}>
@@ -91,4 +114,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: color.surfaceAlt,
   },
+  fallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: space(4),
+    gap: space(1.5),
+  },
+  fallbackEmoji: { fontSize: 32 },
+  fallbackBrand: { fontFamily: font.displaySemi, fontSize: 16, color: color.inkSoft, textAlign: "center" },
+  fallbackSupport: { fontFamily: font.bodyReg, fontSize: 13, color: color.inkFaint, textAlign: "center" },
 });
