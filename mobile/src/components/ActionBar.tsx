@@ -12,6 +12,9 @@ export function ActionBar({
   canUndo,
   disabled,
   variant = "restaurant",
+  adSkipReady = true,
+  adSkipProgress = 1,
+  adSkipSecondsLeft = 0,
 }: {
   onUndo: () => void;
   onNope: () => void;
@@ -20,9 +23,16 @@ export function ActionBar({
   canUndo: boolean;
   disabled: boolean;
   // "ad": the top card is the in-deck ad sentinel — ✕/♡ both just advance past
-  // it (dimmed to signal neither is a real choice) and the 4th slot points at
-  // /support instead of directions, since there's no restaurant to navigate to.
+  // it (merged into one "Skip ad" button) and the 4th slot points at /support
+  // instead of directions, since there's no restaurant to navigate to.
   variant?: "restaurant" | "ad";
+  // Only meaningful when variant === "ad". The Skip button is disabled and
+  // shows a countdown until adSkipReady — swipe is NEVER gated by this, it
+  // always works, so the card stays dismissible by some means at every
+  // moment. See deckAds.ts AD_SKIP_DELAY_MS / plan Part 11.1e.
+  adSkipReady?: boolean;
+  adSkipProgress?: number; // 0..1, drives the fill bar while waiting
+  adSkipSecondsLeft?: number;
 }) {
   const t = useT();
   const isAd = variant === "ad";
@@ -41,13 +51,18 @@ export function ActionBar({
       {isAd ? (
         <Pressable
           onPress={onNope}
-          disabled={disabled}
+          disabled={disabled || !adSkipReady}
           style={[styles.skipAd, disabled && styles.faded]}
           hitSlop={8}
-          accessibilityLabel={t("a11ySkipAd")}
+          accessibilityLabel={adSkipReady ? t("a11ySkipAd") : t("skipAdIn", { n: adSkipSecondsLeft })}
         >
-          <Text style={styles.skipAdText}>{t("a11ySkipAd")}</Text>
-          <Feather name="arrow-right" size={16} color={color.paper} />
+          {!adSkipReady ? (
+            <View style={[styles.skipAdFill, { width: `${Math.round(adSkipProgress * 100)}%` }]} />
+          ) : null}
+          <Text style={styles.skipAdText}>
+            {adSkipReady ? t("a11ySkipAd") : t("skipAdIn", { n: adSkipSecondsLeft })}
+          </Text>
+          {adSkipReady ? <Feather name="arrow-right" size={16} color={color.paper} /> : null}
         </Pressable>
       ) : (
         <>
@@ -121,7 +136,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 16,
     paddingHorizontal: 26,
+    overflow: "hidden",
     ...shadow,
+  },
+  skipAdFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   skipAdText: { fontFamily: font.display, fontSize: 15, color: color.paper },
 });

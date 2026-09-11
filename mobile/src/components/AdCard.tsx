@@ -5,15 +5,19 @@ import { ADSENSE_CLIENT, adSlotId } from "../lib/adsConfig";
 
 // A single AdSense display unit, web-only. See docs/COST_AND_MONETIZATION_PLAN.md
 // Part 11.1. It is NEVER a gate: whatever renders it (a deck card, the detail
-// sheet, the end-of-deck state) stays swipeable / scrollable. A 2-second CSS
-// fade-in buys viewable dwell time without blocking anything. Renders `null`
+// sheet, the end-of-deck state) stays swipeable / scrollable. Renders `null`
 // when: not web, no env config, the slot goes unfilled, or (deck only) the
 // 60-second frequency cap is active.
+//
+// No fade-in (removed 2026-09-11): verified against Google's own viewability
+// docs that Active View measures DOM/viewport position, not CSS opacity, so a
+// fade bought no actual viewable-impression time — it was cosmetic only. Cut
+// for simplicity. The in-deck slot's forced-dwell mechanism is now the "Skip
+// ad" button's countdown (DeckScreen + ActionBar), which never blocks swipe.
 
 export type AdSlot = "deck" | "detail" | "done" | "seo";
 
 const AD_SCRIPT = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js";
-const FADE_MS = 2000;
 const DECK_MIN_GAP_MS = 60_000;
 
 // module state, shared across mounts
@@ -40,7 +44,6 @@ export function deckGapOK(now = Date.now()): boolean {
 export function AdCard({ slot, style }: { slot: AdSlot; style?: object }) {
   const insRef = useRef<HTMLModElement | null>(null);
   const [unfilled, setUnfilled] = useState(false);
-  const [shown, setShown] = useState(false);
 
   // Web-only: native RN has no `document`, so this is false there.
   const slotId = adSlotId(slot);
@@ -57,14 +60,10 @@ export function AdCard({ slot, style }: { slot: AdSlot; style?: object }) {
     } catch {
       // adsbygoogle not ready yet — it drains its own queue when the script loads
     }
-    const on = setTimeout(() => setShown(true), 20); // next tick → CSS transition runs
     const check = setTimeout(() => {
       if (insRef.current?.getAttribute("data-ad-status") === "unfilled") setUnfilled(true);
     }, 2500);
-    return () => {
-      clearTimeout(on);
-      clearTimeout(check);
-    };
+    return () => clearTimeout(check);
   }, [enabled, slot]);
 
   if (!enabled || unfilled) return null;
@@ -74,13 +73,7 @@ export function AdCard({ slot, style }: { slot: AdSlot; style?: object }) {
       {React.createElement("ins", {
         ref: insRef,
         className: "adsbygoogle",
-        style: {
-          display: "block",
-          width: "100%",
-          height: "100%",
-          opacity: shown ? 1 : 0,
-          transition: `opacity ${FADE_MS}ms ease`,
-        },
+        style: { display: "block", width: "100%", height: "100%" },
         "data-ad-client": ADSENSE_CLIENT,
         "data-ad-slot": slotId,
         "data-ad-format": "auto",

@@ -12,7 +12,7 @@ import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
 import { coverageHeadline, inCoverage } from "../lib/coverage";
 import { readStartLocation } from "../lib/startLocation";
-import { spliceAds } from "../lib/deckAds";
+import { spliceAds, AD_SKIP_DELAY_MS } from "../lib/deckAds";
 import { deckAdsEnabled } from "../lib/adsConfig";
 import { AdCard } from "../components/AdCard";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
@@ -262,6 +262,29 @@ export function DeckScreen() {
   const activeCard = current && !isAd(current) ? current : null;
   const currentIsAd = !!current && isAd(current);
 
+  // The in-deck ad's "Skip ad" button is disabled with a countdown for
+  // AD_SKIP_DELAY_MS after the ad becomes the top card. Swipe is never gated
+  // by this — resolve() already lets a swipe skip the ad at any time — so the
+  // card stays dismissible by some means at every moment. Part 11.1e.
+  const [adSkipProgress, setAdSkipProgress] = useState(currentIsAd ? 0 : 1);
+  useEffect(() => {
+    if (!currentIsAd) {
+      setAdSkipProgress(1);
+      return;
+    }
+    setAdSkipProgress(0);
+    const start = Date.now();
+    const id = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / AD_SKIP_DELAY_MS);
+      setAdSkipProgress(p);
+      if (p >= 1) clearInterval(id);
+    }, 100);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIsAd, index]);
+  const adSkipReady = adSkipProgress >= 1;
+  const adSkipSecondsLeft = Math.max(0, Math.ceil((1 - adSkipProgress) * (AD_SKIP_DELAY_MS / 1000)));
+
   const openDirections = () => {
     if (currentIsAd) {
       // the ad card has no restaurant to navigate to — reuse the slot to point
@@ -467,6 +490,9 @@ export function DeckScreen() {
               canUndo={history.current.length > 0}
               disabled={!current}
               variant={currentIsAd ? "ad" : "restaurant"}
+              adSkipReady={adSkipReady}
+              adSkipProgress={adSkipProgress}
+              adSkipSecondsLeft={adSkipSecondsLeft}
             />
           </View>
         ) : null}
