@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { color } from "../theme/tokens";
+import { color, font } from "../theme/tokens";
 import { useT } from "../lib/i18n";
 
 export function ActionBar({
@@ -38,25 +38,40 @@ export function ActionBar({
         <Feather name="rotate-ccw" size={18} color={color.inkSoft} />
       </Pressable>
 
-      <Pressable
-        onPress={onNope}
-        disabled={disabled}
-        style={[styles.btn, styles.nope, (disabled || isAd) && styles.faded]}
-        hitSlop={8}
-        accessibilityLabel={isAd ? t("a11ySkipAd") : t("a11yPass")}
-      >
-        <Feather name="x" size={24} color={color.nope} />
-      </Pressable>
+      {isAd ? (
+        <Pressable
+          onPress={onNope}
+          disabled={disabled}
+          style={[styles.skipAd, disabled && styles.faded]}
+          hitSlop={8}
+          accessibilityLabel={t("a11ySkipAd")}
+        >
+          <Text style={styles.skipAdText}>{t("a11ySkipAd")}</Text>
+          <Feather name="arrow-right" size={16} color={color.paper} />
+        </Pressable>
+      ) : (
+        <>
+          <Pressable
+            onPress={onNope}
+            disabled={disabled}
+            style={[styles.btn, styles.nope, disabled && styles.faded]}
+            hitSlop={8}
+            accessibilityLabel={t("a11yPass")}
+          >
+            <Feather name="x" size={24} color={color.nope} />
+          </Pressable>
 
-      <Pressable
-        onPress={onLike}
-        disabled={disabled}
-        style={[styles.btn, styles.like, (disabled || isAd) && styles.faded]}
-        hitSlop={8}
-        accessibilityLabel={isAd ? t("a11ySkipAd") : t("a11yLike")}
-      >
-        <Feather name="heart" size={26} color={color.like} />
-      </Pressable>
+          <Pressable
+            onPress={onLike}
+            disabled={disabled}
+            style={[styles.btn, styles.like, disabled && styles.faded]}
+            hitSlop={8}
+            accessibilityLabel={t("a11yLike")}
+          >
+            <Feather name="heart" size={26} color={color.like} />
+          </Pressable>
+        </>
+      )}
 
       <Pressable
         onPress={onDirections}
@@ -98,4 +113,15 @@ const styles = StyleSheet.create({
   nope: { width: 58, height: 58, borderRadius: 999 },
   like: { width: 66, height: 66, borderRadius: 999 },
   faded: { opacity: 0.4 },
+  skipAd: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: color.ink,
+    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 26,
+    ...shadow,
+  },
+  skipAdText: { fontFamily: font.display, fontSize: 15, color: color.paper },
 });
