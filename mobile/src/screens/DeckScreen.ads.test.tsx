@@ -79,7 +79,7 @@ function renderScreen() {
 describe("DeckScreen — ads", () => {
   test("an ad card sits in the deck but is not a restaurant / not likeable", async () => {
     mockGetNearby.mockResolvedValue([card("a"), card("b")]);
-    const { getByLabelText, queryByLabelText, getAllByLabelText } = renderScreen();
+    const { getByLabelText, queryByLabelText } = renderScreen();
 
     await waitFor(
       () => expect(getByLabelText("Like").props.accessibilityState?.disabled).toBeFalsy(),
@@ -91,14 +91,15 @@ describe("DeckScreen — ads", () => {
       fireEvent.press(getByLabelText("Like"));
     });
 
-    // action bar stays visible, but relabelled: ✕/♡ both just skip the ad
+    // action bar stays visible, but relabelled: ✕/♡ merge into one "Skip ad" button
     await waitFor(() => expect(queryByLabelText("Like")).toBeNull(), { timeout: 30000 });
-    expect(getAllByLabelText("Skip ad")).toHaveLength(2);
+    expect(queryByLabelText("Pass")).toBeNull();
+    expect(getByLabelText("Skip ad")).toBeTruthy();
     expect(getByLabelText("Support the developer")).toBeTruthy();
 
     // tapping skip advances past the ad without touching liked state
     await act(async () => {
-      fireEvent.press(getAllByLabelText("Skip ad")[0]);
+      fireEvent.press(getByLabelText("Skip ad"));
     });
     await waitFor(() => expect(getByLabelText("Like")).toBeTruthy(), { timeout: 30000 });
 
