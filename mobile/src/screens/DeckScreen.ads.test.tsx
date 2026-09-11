@@ -94,10 +94,19 @@ describe("DeckScreen — ads", () => {
     // action bar stays visible, but relabelled: ✕/♡ merge into one "Skip ad" button
     await waitFor(() => expect(queryByLabelText("Like")).toBeNull(), { timeout: 30000 });
     expect(queryByLabelText("Pass")).toBeNull();
-    expect(getByLabelText("Skip ad")).toBeTruthy();
     expect(getByLabelText("Support the developer")).toBeTruthy();
 
-    // tapping skip advances past the ad without touching liked state
+    // the Skip button starts disabled with a countdown — AD_SKIP_DELAY_MS —
+    // but the ad was already skippable by swiping (the Like tap above); the
+    // button gating never blocks that path.
+    const skipBtn = () => getByLabelText(/skip ad/i);
+    expect(skipBtn().props.accessibilityState?.disabled).toBe(true);
+    await waitFor(() => expect(skipBtn().props.accessibilityState?.disabled).toBeFalsy(), {
+      timeout: 10000,
+    });
+    expect(getByLabelText("Skip ad")).toBeTruthy();
+
+    // tapping skip (now enabled) advances past the ad without touching liked state
     await act(async () => {
       fireEvent.press(getByLabelText("Skip ad"));
     });
