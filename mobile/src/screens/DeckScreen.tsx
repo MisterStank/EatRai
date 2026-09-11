@@ -45,8 +45,8 @@ export function DeckScreen() {
   // floating action bar / liked pill are sized so the whole deck still fits
   // on the shortest target (iPhone SE ≈ 667pt) — desktop just centres the
   // same layout in a 480pt column.
-  const deckReserve = space(30);
-  const pillOffset = space(19);
+  const deckReserve = space(31);
+  const pillOffset = space(21);
   const actionsOffset = space(3);
 
   const lang = useSession((s) => s.lang);

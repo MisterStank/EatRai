@@ -40,10 +40,12 @@ describe("AdCard", () => {
     expect(found[0].props["data-ad-client"]).toBe("ca-pub-testclient");
   });
 
-  test("renders null for a slot with no configured id", () => {
+  test("shows the branded filler (not blank/null) for a slot with no configured id", () => {
     const r = render(<AdCard slot="seo" />, opts);
     expect(inses(r)).toHaveLength(0);
-    expect(r.toJSON()).toBeNull();
+    expect(r.toJSON()).not.toBeNull();
+    expect(r.getByText(/MisterStank/)).toBeTruthy();
+    expect(r.getByText(/eatrai\.help\/support/)).toBeTruthy();
   });
 
   test("injects the AdSense script exactly once across multiple mounts", () => {
