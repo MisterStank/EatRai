@@ -157,13 +157,15 @@ export function RestaurantSheet({
 
               {loading ? <ActivityIndicator color={color.inkFaint} style={{ marginTop: space(4) }} /> : null}
 
-              <Pressable style={styles.mapsBtn} onPress={() => open(view.mapsUri)}>
-                <Text style={styles.mapsBtnText}>{t("openInMaps")}</Text>
-              </Pressable>
-
               <View style={styles.detailAd}>
                 <AdCard slot="detail" />
               </View>
+
+              {/* extra gap (not the usual row spacing) so the ad and this button
+                  don't read as one tappable cluster — accidental-click hygiene */}
+              <Pressable style={[styles.mapsBtn, styles.mapsBtnAfterAd]} onPress={() => open(view.mapsUri)}>
+                <Text style={styles.mapsBtnText}>{t("openInMaps")}</Text>
+              </Pressable>
             </View>
           </ScrollView>
         )}
@@ -251,5 +253,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: space(7),
   },
+  mapsBtnAfterAd: { marginTop: space(10) },
   mapsBtnText: { fontFamily: font.display, fontSize: 15, color: color.paper },
 });
