@@ -260,8 +260,15 @@ export function DeckScreen() {
   }, [removeLiked, dragX, cards]);
 
   const activeCard = current && !isAd(current) ? current : null;
+  const currentIsAd = !!current && isAd(current);
 
   const openDirections = () => {
+    if (currentIsAd) {
+      // the ad card has no restaurant to navigate to — reuse the slot to point
+      // at the other way to support the app (see docs Part 11.6 grilling notes)
+      openExternal("https://eatrai.help/support");
+      return;
+    }
     if (activeCard) openExternal(activeCard.mapsUri);
   };
 
@@ -450,7 +457,7 @@ export function DeckScreen() {
           </Pressable>
         ) : null}
 
-        {current && isAd(current) ? null : (
+        {current ? (
           <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
             <ActionBar
               onUndo={undo}
@@ -459,9 +466,10 @@ export function DeckScreen() {
               onDirections={openDirections}
               canUndo={history.current.length > 0}
               disabled={!current}
+              variant={currentIsAd ? "ad" : "restaurant"}
             />
           </View>
-        )}
+        ) : null}
       </View>
 
       <FilterSheet

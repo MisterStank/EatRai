@@ -79,7 +79,7 @@ function renderScreen() {
 describe("DeckScreen — ads", () => {
   test("an ad card sits in the deck but is not a restaurant / not likeable", async () => {
     mockGetNearby.mockResolvedValue([card("a"), card("b")]);
-    const { getByLabelText, queryByLabelText } = renderScreen();
+    const { getByLabelText, queryByLabelText, getAllByLabelText } = renderScreen();
 
     await waitFor(
       () => expect(getByLabelText("Like").props.accessibilityState?.disabled).toBeFalsy(),
@@ -90,11 +90,39 @@ describe("DeckScreen — ads", () => {
     await act(async () => {
       fireEvent.press(getByLabelText("Like"));
     });
-    // action bar is hidden while the ad card is on top
+
+    // action bar stays visible, but relabelled: ✕/♡ both just skip the ad
     await waitFor(() => expect(queryByLabelText("Like")).toBeNull(), { timeout: 30000 });
+    expect(getAllByLabelText("Skip ad")).toHaveLength(2);
+    expect(getByLabelText("Support the developer")).toBeTruthy();
+
+    // tapping skip advances past the ad without touching liked state
+    await act(async () => {
+      fireEvent.press(getAllByLabelText("Skip ad")[0]);
+    });
+    await waitFor(() => expect(getByLabelText("Like")).toBeTruthy(), { timeout: 30000 });
 
     // the ad swipe was not recorded as a like
     expect(useSession.getState().liked.map((l) => l.id)).toEqual(["a"]);
+  }, 60000);
+
+  test("the ad card's 4th button opens /support, not directions", async () => {
+    mockGetNearby.mockResolvedValue([card("a"), card("b")]);
+    const { getByLabelText } = renderScreen();
+
+    await waitFor(
+      () => expect(getByLabelText("Like").props.accessibilityState?.disabled).toBeFalsy(),
+      { timeout: 30000 },
+    );
+    await act(async () => {
+      fireEvent.press(getByLabelText("Like"));
+    });
+    await waitFor(() => expect(getByLabelText("Support the developer")).toBeTruthy(), {
+      timeout: 30000,
+    });
+
+    fireEvent.press(getByLabelText("Support the developer"));
+    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support");
   }, 60000);
 
   test('the "Support the developer" menu row opens the /support page', async () => {

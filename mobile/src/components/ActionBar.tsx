@@ -11,6 +11,7 @@ export function ActionBar({
   onDirections,
   canUndo,
   disabled,
+  variant = "restaurant",
 }: {
   onUndo: () => void;
   onNope: () => void;
@@ -18,8 +19,13 @@ export function ActionBar({
   onDirections: () => void;
   canUndo: boolean;
   disabled: boolean;
+  // "ad": the top card is the in-deck ad sentinel — ✕/♡ both just advance past
+  // it (dimmed to signal neither is a real choice) and the 4th slot points at
+  // /support instead of directions, since there's no restaurant to navigate to.
+  variant?: "restaurant" | "ad";
 }) {
   const t = useT();
+  const isAd = variant === "ad";
   return (
     <View style={styles.bar} pointerEvents="box-none">
       <Pressable
@@ -32,16 +38,34 @@ export function ActionBar({
         <Feather name="rotate-ccw" size={18} color={color.inkSoft} />
       </Pressable>
 
-      <Pressable onPress={onNope} disabled={disabled} style={[styles.btn, styles.nope, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yPass")}>
+      <Pressable
+        onPress={onNope}
+        disabled={disabled}
+        style={[styles.btn, styles.nope, (disabled || isAd) && styles.faded]}
+        hitSlop={8}
+        accessibilityLabel={isAd ? t("a11ySkipAd") : t("a11yPass")}
+      >
         <Feather name="x" size={24} color={color.nope} />
       </Pressable>
 
-      <Pressable onPress={onLike} disabled={disabled} style={[styles.btn, styles.like, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yLike")}>
+      <Pressable
+        onPress={onLike}
+        disabled={disabled}
+        style={[styles.btn, styles.like, (disabled || isAd) && styles.faded]}
+        hitSlop={8}
+        accessibilityLabel={isAd ? t("a11ySkipAd") : t("a11yLike")}
+      >
         <Feather name="heart" size={26} color={color.like} />
       </Pressable>
 
-      <Pressable onPress={onDirections} disabled={disabled} style={[styles.btn, styles.sm, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yDirections")}>
-        <Feather name="navigation" size={18} color={color.inkSoft} />
+      <Pressable
+        onPress={onDirections}
+        disabled={disabled}
+        style={[styles.btn, styles.sm, disabled && styles.faded]}
+        hitSlop={8}
+        accessibilityLabel={isAd ? t("a11ySupportDev") : t("a11yDirections")}
+      >
+        <Feather name={isAd ? "coffee" : "navigation"} size={18} color={color.inkSoft} />
       </Pressable>
     </View>
   );
