@@ -116,11 +116,14 @@ func (s mockSpot) card(dist int, lang string) Card {
 		Rating:      s.rating,
 		RatingCount: s.count,
 		Cuisines:    cz,
-		DistanceM:   dist,
-		OpenNow:     s.open,
-		OpenKnown:   true,
-		MapsURI:     "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(s.name+" Bangkok"),
-		PhotoURLs:   mockPhotos(s.name, nearbyPhotos),
+		// A synthetic coordinate `dist` metres due north of the mock geocode
+		// centre (Samyan), so a client-side haversine from that centre ≈ dist.
+		Location:  LatLng{Lat: 13.7326 + float64(dist)/111320.0, Lng: 100.5289},
+		DistanceM: dist,
+		OpenNow:   s.open,
+		OpenKnown: true,
+		MapsURI:   "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(s.name+" Bangkok"),
+		PhotoURLs: mockPhotos(s.name, nearbyPhotos),
 	}
 }
 

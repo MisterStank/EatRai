@@ -1,6 +1,7 @@
 import React from "react";
 import { render, waitFor, fireEvent, act } from "@testing-library/react-native";
 import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
+import * as Location from "expo-location";
 import { DeckScreen } from "./DeckScreen";
 import { useSession, DEFAULT_RADIUS_M } from "../store/session";
 import type { Card } from "../api/client";
@@ -131,6 +132,27 @@ describe("DeckScreen", () => {
   // (the widen-search seen-set) is either empty or gets cleared by those
   // reloads, and liked cards weren't otherwise protected. The fix always
   // filters the freshly-fetched deck against the current liked list too.
+  // Part 14: an out-of-coverage location shows a dismissible banner; an
+  // in-coverage one doesn't.
+  test("shows a dismissible out-of-coverage banner when the user is outside a covered metro", async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValueOnce({
+      coords: { latitude: 19.91, longitude: 99.83 }, // Chiang Rai — not covered
+    });
+    mockGetNearby.mockResolvedValue([card("a")]);
+    const { getByText, queryByText, getByLabelText } = renderScreen();
+
+    await waitFor(() => expect(getByText(/outside those/i)).toBeTruthy());
+    fireEvent.press(getByLabelText("Dismiss"));
+    await waitFor(() => expect(queryByText(/outside those/i)).toBeNull());
+  }, 30000);
+
+  test("no coverage banner when the user is in Bangkok", async () => {
+    mockGetNearby.mockResolvedValue([card("a")]);
+    const { queryByText, getByLabelText } = renderScreen();
+    await waitFor(() => expect(getByLabelText("Pass").props.accessibilityState?.disabled).toBeFalsy());
+    expect(queryByText(/outside those/i)).toBeNull();
+  }, 30000);
+
   test("a liked card never reappears in the deck after a filter-driven reload", async () => {
     mockGetNearby.mockResolvedValueOnce([card("a"), card("b")]);
     const { getByLabelText, queryByText } = renderScreen();

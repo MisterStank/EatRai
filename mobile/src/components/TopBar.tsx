@@ -23,6 +23,7 @@ export function TopBar({
   onHelp,
   onFeedback,
   onSupport,
+  onLegal,
 }: {
   locationLabel: string;
   filterCount: number;
@@ -31,6 +32,7 @@ export function TopBar({
   onHelp: () => void;
   onFeedback: () => void;
   onSupport: () => void;
+  onLegal: () => void;
 }) {
   const t = useT();
   const lang = useSession((s) => s.lang);
@@ -128,6 +130,8 @@ export function TopBar({
               <MenuRow icon="message-square" label={t("giveFeedback")} onPress={run(onFeedback)} />
               <View style={styles.menuDivider} />
               <MenuRow icon="coffee" label={t("supportDev")} onPress={run(onSupport)} />
+              <View style={styles.menuDivider} />
+              <MenuRow icon="shield" label={t("privacyTerms")} onPress={run(onLegal)} />
             </Pressable>
           </Animated.View>
         </Pressable>

@@ -46,6 +46,7 @@ const en = {
   feedbackBlurb: "Your feedback opens in a browser. It's anonymous unless you leave your email.",
   openFeedbackForm: "Open feedback form",
   supportDev: "Support the developer",
+  privacyTerms: "Privacy & Terms",
   comingSoon: "Coming soon",
 
   // decide
@@ -144,6 +145,11 @@ const en = {
   a11yPass: "Pass",
   a11yLike: "Like",
   a11yDirections: "Directions",
+  a11ySkipAd: "Skip ad",
+  skipAdIn: "Skip ad in {n}s",
+  adFallbackBrand: "EatRai — made by MisterStank 👨‍💻",
+  adFallbackSupport: "Enjoying it? Support at eatrai.help/support 💛",
+  a11ySupportDev: "Support the developer",
   a11yFilters: "Filters",
   a11yHelp: "How to use",
   a11yMenu: "Menu",
@@ -152,6 +158,14 @@ const en = {
   a11yPhotoNext: "Next photo",
   a11yPhotoPrev: "Previous photo",
   a11yRestaurantCard: "{name}. Swipe right to save, left to pass.",
+
+  // coverage / degraded
+  coverageBannerOut: "EatRai covers {areas} + 7 more Thai cities. You're outside those, so results may be sparse.",
+  coverageEmptyHint: "You may be outside our coverage area — see where EatRai works.",
+  coverageHelpTitle: "Where EatRai works",
+  coverageHelpBody: "EatRai has real restaurant data in these areas only:",
+  degradedNote: "Showing recent results",
+  dismiss: "Dismiss",
 };
 
 type Key = keyof typeof en;
@@ -197,6 +211,7 @@ const th: Record<Key, string> = {
   feedbackBlurb: "แบบฟอร์มจะเปิดในเบราว์เซอร์ ไม่ระบุตัวตนเว้นแต่คุณจะกรอกอีเมล",
   openFeedbackForm: "เปิดแบบฟอร์ม",
   supportDev: "สนับสนุนผู้พัฒนา",
+  privacyTerms: "ความเป็นส่วนตัว & เงื่อนไข",
   comingSoon: "เร็ว ๆ นี้",
 
   decideForMe: "เลือกให้เลย",
@@ -286,6 +301,11 @@ const th: Record<Key, string> = {
   a11yPass: "ผ่าน",
   a11yLike: "ชอบ",
   a11yDirections: "เส้นทาง",
+  a11ySkipAd: "ข้ามโฆษณา",
+  skipAdIn: "ข้ามโฆษณาใน {n} วิ",
+  adFallbackBrand: "EatRai — สร้างโดย MisterStank 👨‍💻",
+  adFallbackSupport: "ถ้าชอบแอปนี้ สนับสนุนได้ที่ eatrai.help/support 💛",
+  a11ySupportDev: "สนับสนุนผู้พัฒนา",
   a11yFilters: "ตัวกรอง",
   a11yHelp: "วิธีใช้",
   a11yMenu: "เมนู",
@@ -294,6 +314,13 @@ const th: Record<Key, string> = {
   a11yPhotoNext: "รูปถัดไป",
   a11yPhotoPrev: "รูปก่อนหน้า",
   a11yRestaurantCard: "{name} ปัดขวาเพื่อบันทึก ปัดซ้ายเพื่อผ่าน",
+
+  coverageBannerOut: "EatRai ให้บริการใน {areas} และอีก 7 เมืองในไทย คุณอยู่นอกพื้นที่ ผลลัพธ์อาจมีน้อย",
+  coverageEmptyHint: "คุณอาจอยู่นอกพื้นที่ให้บริการ — ดูพื้นที่ที่ EatRai รองรับ",
+  coverageHelpTitle: "พื้นที่ที่ EatRai รองรับ",
+  coverageHelpBody: "EatRai มีข้อมูลร้านอาหารจริงเฉพาะพื้นที่เหล่านี้:",
+  degradedNote: "กำลังแสดงผลลัพธ์ล่าสุด",
+  dismiss: "ปิด",
 };
 
 const dict: Record<Lang, Record<Key, string>> = { en, th };

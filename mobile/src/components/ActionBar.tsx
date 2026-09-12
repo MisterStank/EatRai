@@ -1,7 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { color } from "../theme/tokens";
+import { color, font } from "../theme/tokens";
 import { useT } from "../lib/i18n";
 
 export function ActionBar({
@@ -11,6 +11,10 @@ export function ActionBar({
   onDirections,
   canUndo,
   disabled,
+  variant = "restaurant",
+  adSkipReady = true,
+  adSkipProgress = 1,
+  adSkipSecondsLeft = 0,
 }: {
   onUndo: () => void;
   onNope: () => void;
@@ -18,8 +22,20 @@ export function ActionBar({
   onDirections: () => void;
   canUndo: boolean;
   disabled: boolean;
+  // "ad": the top card is the in-deck ad sentinel — ✕/♡ both just advance past
+  // it (merged into one "Skip ad" button) and the 4th slot points at /support
+  // instead of directions, since there's no restaurant to navigate to.
+  variant?: "restaurant" | "ad";
+  // Only meaningful when variant === "ad". The Skip button is disabled and
+  // shows a countdown until adSkipReady — DeckScreen also disables swipe on
+  // the card for the same window (full lock, chosen after a live A/B trial).
+  // See deckAds.ts AD_SKIP_DELAY_MS / plan Part 11.1e.
+  adSkipReady?: boolean;
+  adSkipProgress?: number; // 0..1, drives the fill bar while waiting
+  adSkipSecondsLeft?: number;
 }) {
   const t = useT();
+  const isAd = variant === "ad";
   return (
     <View style={styles.bar} pointerEvents="box-none">
       <Pressable
@@ -32,16 +48,54 @@ export function ActionBar({
         <Feather name="rotate-ccw" size={18} color={color.inkSoft} />
       </Pressable>
 
-      <Pressable onPress={onNope} disabled={disabled} style={[styles.btn, styles.nope, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yPass")}>
-        <Feather name="x" size={24} color={color.nope} />
-      </Pressable>
+      {isAd ? (
+        <Pressable
+          onPress={onNope}
+          disabled={disabled || !adSkipReady}
+          style={[styles.skipAd, disabled && styles.faded]}
+          hitSlop={8}
+          accessibilityLabel={adSkipReady ? t("a11ySkipAd") : t("skipAdIn", { n: adSkipSecondsLeft })}
+        >
+          {!adSkipReady ? (
+            <View style={[styles.skipAdFill, { width: `${Math.round(adSkipProgress * 100)}%` }]} />
+          ) : null}
+          <Text style={styles.skipAdText}>
+            {adSkipReady ? t("a11ySkipAd") : t("skipAdIn", { n: adSkipSecondsLeft })}
+          </Text>
+          {adSkipReady ? <Feather name="arrow-right" size={16} color={color.paper} /> : null}
+        </Pressable>
+      ) : (
+        <>
+          <Pressable
+            onPress={onNope}
+            disabled={disabled}
+            style={[styles.btn, styles.nope, disabled && styles.faded]}
+            hitSlop={8}
+            accessibilityLabel={t("a11yPass")}
+          >
+            <Feather name="x" size={24} color={color.nope} />
+          </Pressable>
 
-      <Pressable onPress={onLike} disabled={disabled} style={[styles.btn, styles.like, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yLike")}>
-        <Feather name="heart" size={26} color={color.like} />
-      </Pressable>
+          <Pressable
+            onPress={onLike}
+            disabled={disabled}
+            style={[styles.btn, styles.like, disabled && styles.faded]}
+            hitSlop={8}
+            accessibilityLabel={t("a11yLike")}
+          >
+            <Feather name="heart" size={26} color={color.like} />
+          </Pressable>
+        </>
+      )}
 
-      <Pressable onPress={onDirections} disabled={disabled} style={[styles.btn, styles.sm, disabled && styles.faded]} hitSlop={8} accessibilityLabel={t("a11yDirections")}>
-        <Feather name="navigation" size={18} color={color.inkSoft} />
+      <Pressable
+        onPress={onDirections}
+        disabled={disabled}
+        style={[styles.btn, styles.sm, disabled && styles.faded]}
+        hitSlop={8}
+        accessibilityLabel={isAd ? t("a11ySupportDev") : t("a11yDirections")}
+      >
+        <Feather name={isAd ? "coffee" : "navigation"} size={18} color={color.inkSoft} />
       </Pressable>
     </View>
   );
@@ -74,4 +128,23 @@ const styles = StyleSheet.create({
   nope: { width: 58, height: 58, borderRadius: 999 },
   like: { width: 66, height: 66, borderRadius: 999 },
   faded: { opacity: 0.4 },
+  skipAd: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: color.ink,
+    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 26,
+    overflow: "hidden",
+    ...shadow,
+  },
+  skipAdFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  skipAdText: { fontFamily: font.display, fontSize: 15, color: color.paper },
 });

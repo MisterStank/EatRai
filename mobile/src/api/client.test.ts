@@ -8,40 +8,117 @@ function mockFetchOnce(status: number, body: any) {
   });
 }
 
+function mockFetchAlways(status: number, body: any) {
+  (global.fetch as jest.Mock).mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  });
+}
+
+// A server card with everything the client needs; override per test.
+function srvCard(over: Partial<any> = {}) {
+  return {
+    id: "1",
+    name: "Place",
+    address: "",
+    priceLevel: 0,
+    priceRange: null,
+    rating: 4.5,
+    ratingCount: 100,
+    photoUrls: [],
+    cuisines: [],
+    location: { lat: 13.75, lng: 100.5 },
+    distanceM: 0,
+    openNow: true,
+    openKnown: true,
+    mapsUri: "",
+    ...over,
+  };
+}
+
 beforeEach(() => {
   global.fetch = jest.fn();
 });
 
 describe("getNearby", () => {
-  test("builds query params from opts and returns cards", async () => {
-    mockFetchOnce(200, { cards: [{ id: "1" }] });
-    const cards = await getNearby(13.75, 100.5, {
+  test("snaps coords to the grid and sends only cell/cuisine/lang on the wire", async () => {
+    mockFetchAlways(200, { cards: [] });
+    await getNearby(13.7461, 100.5341, {
       radiusM: 2000,
-      categories: ["thai", "cafe"],
+      categories: ["thai"],
       openNow: true,
       minRating: 4,
       priceLevels: [1, 2],
       sort: "match",
       lang: "th",
     });
-    expect(cards).toEqual([{ id: "1" }]);
     const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-    expect(url).toContain("lat=13.75");
-    expect(url).toContain("lng=100.5");
-    expect(url).toContain("radius=2000");
-    expect(url).toContain("categories=thai%2Ccafe");
-    expect(url).toContain("openNow=true");
-    expect(url).toContain("minRating=4");
-    expect(url).toContain("priceLevels=1%2C2");
-    expect(url).toContain("sort=match");
+    expect(url).toContain("lat=13.746"); // snapped from 13.7461
+    expect(url).toContain("lng=100.533"); // snapped from 100.5341
+    expect(url).toContain("cuisine=thai");
     expect(url).toContain("lang=th");
+    // client-side concerns never hit the wire
+    expect(url).not.toContain("openNow");
+    expect(url).not.toContain("minRating");
+    expect(url).not.toContain("priceLevels");
+    expect(url).not.toContain("sort");
+    expect(url).not.toContain("radius="); // 2000 buckets to 5000 (the default) → omitted
   });
 
-  test("omits lang param for English (the default)", async () => {
-    mockFetchOnce(200, { cards: [] });
-    await getNearby(13.75, 100.5, { lang: "en" });
+  test("fires one request per selected cuisine and merges + de-dupes by id", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ cards: [srvCard({ id: "a" }), srvCard({ id: "b" })] }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ cards: [srvCard({ id: "b" }), srvCard({ id: "c" })] }) });
+    const cards = await getNearby(13.75, 100.5, { categories: ["thai", "cafe"] });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(cards.map((c) => c.id).sort()).toEqual(["a", "b", "c"]);
+  });
+
+  test("sends radius only when the bucket differs from the 5 km default", async () => {
+    mockFetchAlways(200, { cards: [] });
+    await getNearby(13.75, 100.5, { radiusM: 12000 });
     const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-    expect(url).not.toContain("lang=");
+    expect(url).toContain("radius=20000"); // 12000 → 20000 bucket
+  });
+
+  test("computes distance client-side from location + true (unsnapped) position", async () => {
+    // place ~1.1 km due north of the true position
+    mockFetchOnce(200, { cards: [srvCard({ id: "x", location: { lat: 13.75 + 0.01, lng: 100.5 } })] });
+    const [card] = await getNearby(13.75, 100.5, { radiusM: 5000 });
+    expect(card.distanceM).toBeGreaterThan(900);
+    expect(card.distanceM).toBeLessThan(1300);
+  });
+
+  test("applies radius / rating / price / open-now filters client-side", async () => {
+    mockFetchOnce(200, {
+      cards: [
+        srvCard({ id: "far", distanceM: 8000, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "lowrating", rating: 3.0, distanceM: 100, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "pricey", priceLevel: 4, distanceM: 100, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "unknownprice", priceLevel: 0, distanceM: 100, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "closed", openKnown: true, openNow: false, distanceM: 100, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "keep", rating: 4.5, priceLevel: 2, distanceM: 100, location: { lat: 0, lng: 0 } }),
+      ],
+    });
+    const cards = await getNearby(13.75, 100.5, {
+      radiusM: 3000,
+      minRating: 4,
+      priceLevels: [1, 2],
+      openNow: true,
+    });
+    expect(cards.map((c) => c.id).sort()).toEqual(["keep", "unknownprice"]);
+  });
+
+  test("sort=match re-orders by rating × log(ratingCount)", async () => {
+    mockFetchOnce(200, {
+      cards: [
+        srvCard({ id: "few", rating: 4.9, ratingCount: 3, distanceM: 100, location: { lat: 0, lng: 0 } }),
+        srvCard({ id: "many", rating: 4.4, ratingCount: 5000, distanceM: 900, location: { lat: 0, lng: 0 } }),
+      ],
+    });
+    const cards = await getNearby(13.75, 100.5, { sort: "match" });
+    expect(cards[0].id).toBe("many");
   });
 
   test("returns an empty array when the server omits cards", async () => {

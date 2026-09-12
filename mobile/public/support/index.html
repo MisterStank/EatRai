@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support the developer — EatRai</title>
+<meta name="description" content="Chip in to keep EatRai free — pick an amount and scan the PromptPay QR.">
+<link rel="canonical" href="https://eatrai.help/support">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="google-adsense-account" content="ca-pub-3020689866862162">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
+<script>
+/* set language synchronously to avoid a flash of both languages */
+(function () {
+  var l;
+  try { l = localStorage.getItem("eatrai-lang"); } catch (e) {}
+  if (l !== "en" && l !== "th") {
+    l = (navigator.language || "").toLowerCase().indexOf("th") === 0 ? "th" : "en";
+  }
+  document.documentElement.setAttribute("data-lang", l);
+})();
+</script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+h1,h2{font-family:"Kanit",sans-serif}
+main{max-width:520px;margin:0 auto;padding:20px 22px 64px;text-align:center}
+h1{font-size:26px;margin:0 0 8px;font-weight:700}
+h2{font-size:19px;margin:0 0 6px;font-weight:600}
+.lede{color:#6B6358;margin:0 0 24px}
+.langbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.back{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;text-decoration:none;color:#6B6358;border:1px solid #E8E0D3;background:#fff;border-radius:999px;padding:6px 13px}
+.back:hover{background:#F1EBDF}
+.back svg{flex:none}
+.langbar .toggle{display:flex}
+.langbar button{font:inherit;font-size:13px;border:1px solid #E8E0D3;background:#fff;color:#9A9084;padding:5px 12px;cursor:pointer}
+.langbar button:first-child{border-radius:999px 0 0 999px}
+.langbar button:last-child{border-radius:0 999px 999px 0;border-left:0}
+.langbar button[aria-pressed="true"]{background:#17140F;color:#fff;border-color:#17140F}
+.qr{width:264px;max-width:74vw;height:auto;margin:0 auto;background:#fff;border:1px solid #E8E0D3;border-radius:16px;padding:16px}
+.qr img{display:block;width:100%;height:auto;image-rendering:pixelated}
+.qr img[hidden]{display:none}
+.give{font-weight:600;margin:14px 0 4px;font-size:17px}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0}
+.chips button{font:inherit;font-size:15px;border:1px solid #E8E0D3;background:#fff;color:#17140F;border-radius:999px;padding:8px 18px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:#FF5A1F;border-color:#FF5A1F;color:#fff}
+.custom{margin:12px 0 0}
+.custom input{font:inherit;font-size:15px;width:150px;text-align:center;border:1px solid #E8E0D3;border-radius:999px;padding:8px 14px;background:#fff}
+.save{display:inline-flex;align-items:center;gap:7px;margin:14px 0 0;font:inherit;font-size:14px;border:1px solid #E8E0D3;background:#fff;color:#17140F;border-radius:999px;padding:8px 20px;cursor:pointer}
+.save:hover{background:#F1EBDF}
+.save .dl{flex:none}
+.hint{color:#9A9084;font-size:13px;margin:14px 0 0}
+.about{margin:36px 0 0;padding:20px;background:#fff;border:1px solid #E8E0D3;border-radius:16px;text-align:left}
+.about p{margin:0 0 10px;font-size:15px;color:#17140F}
+.about .links a{margin-right:14px;font-size:14px;white-space:nowrap}
+hr{border:0;border-top:1px solid #E8E0D3;margin:36px 0}
+a{color:#FF5A1F}
+footer{margin-top:36px}
+footer a{color:#9A9084;margin:0 8px;font-size:13px}
+html[data-lang="en"] .lang-th{display:none}
+html[data-lang="th"] .lang-en{display:none}
+</style>
+</head>
+<body>
+<main>
+
+<div class="langbar">
+  <a href="/" class="back">
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 6l-6 6 6 6"/></svg>
+    <span class="lang-en" lang="en">Back to EatRai</span><span class="lang-th" lang="th">กลับไปยัง EatRai</span>
+  </a>
+  <span class="toggle">
+    <button type="button" data-lang-btn="en">EN</button>
+    <button type="button" data-lang-btn="th">ไทย</button>
+  </span>
+</div>
+
+<h1><span class="lang-en" lang="en">Support the developer</span><span class="lang-th" lang="th">สนับสนุนผู้พัฒนา</span></h1>
+<p class="lede">
+  <span class="lang-en" lang="en">Thanks for helping keep EatRai running, so it can keep helping you find a place you want to eat.</span>
+  <span class="lang-th" lang="th">ขอบคุณที่ช่วยสนับสนุนให้ EatRai ช่วยคุณเลือกร้านที่อยากรับประทานต่อไปได้</span>
+</p>
+
+<div class="qr">
+  <img id="qrimg" alt="PromptPay QR code for donating to EatRai" hidden>
+  <img id="qrfallback" src="/support/promptpay.jpg" alt="PromptPay QR code for donating to EatRai" hidden>
+  <noscript><img src="/support/promptpay.jpg" alt="PromptPay QR code for donating to EatRai"></noscript>
+</div>
+
+<p class="give" id="give" hidden></p>
+
+<div class="chips" id="chips">
+  <button type="button" data-amt="20">฿20</button>
+  <button type="button" data-amt="50">฿50</button>
+  <button type="button" data-amt="100">฿100</button>
+  <button type="button" data-amt=""><span class="lang-en" lang="en">Any amount</span><span class="lang-th" lang="th">กำหนดเอง</span></button>
+</div>
+
+<div class="custom">
+  <input id="custom" type="number" inputmode="numeric" min="1" max="100000" step="1"
+         placeholder="฿ …" aria-label="Custom amount in baht">
+</div>
+
+<button type="button" id="saveqr" class="save" hidden>
+  <svg class="dl" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+  </svg><span class="lang-en" lang="en">Save QR image</span><span class="lang-th" lang="th">บันทึกรูป QR</span>
+</button>
+
+<p class="hint">
+  <span class="lang-en" lang="en">Scan with any Thai banking app · your app shows the amount before you confirm.</span>
+  <span class="lang-th" lang="th">สแกนด้วยแอปธนาคารใดก็ได้ · แอปจะแสดงยอดให้ตรวจก่อนยืนยัน</span>
+</p>
+
+<div class="about">
+  <h2><span class="lang-en" lang="en">Who you're supporting</span><span class="lang-th" lang="th">คุณกำลังสนับสนุนใคร</span></h2>
+  <p>
+    <span class="lang-en" lang="en"><strong>Chakkrit Jongkraijak</strong> — full-stack developer. I built EatRai to settle the "where do we eat?" argument. Donations go straight to the Google Maps API bill that keeps it running.</span>
+    <span class="lang-th" lang="th"><strong>จักรกฤษณ์ จงไกรจักร</strong> — นักพัฒนาเว็บ ทำ EatRai ขึ้นมาเพื่อจบปัญหาโลกแตก "จะกินอะไรดี" เงินบริจาคเอาไปจ่ายค่า Google Maps API ที่ทำให้แอปทำงานต่อได้ทั้งหมด</span>
+  </p>
+  <p class="links">
+    <a href="https://chakkritjk-portfolio.vercel.app" target="_blank" rel="noopener">Portfolio</a>
+    <a href="https://github.com/MisterStank" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.linkedin.com/in/chakkrit-jongkraijak/" target="_blank" rel="noopener">LinkedIn</a>
+  </p>
+</div>
+
+<footer>
+<a href="/">EatRai</a>
+<a href="/privacy"><span class="lang-en" lang="en">Privacy</span><span class="lang-th" lang="th">ความเป็นส่วนตัว</span></a>
+<a href="/terms"><span class="lang-en" lang="en">Terms</span><span class="lang-th" lang="th">เงื่อนไข</span></a>
+</footer>
+</main>
+
+<script src="/lang-toggle.js" defer></script>
+<script src="/support/qr.js" defer></script>
+<script src="/support/promptpay.js" defer></script>
+</body>
+</html>

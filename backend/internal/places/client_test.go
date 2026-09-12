@@ -105,6 +105,47 @@ func TestSearchOneBadCategoryDoesntSinkTheWholeSearch(t *testing.T) {
 	}
 }
 
+func TestSearchCuisineMakesExactlyOneCall(t *testing.T) {
+	calls := 0
+	var body map[string]any
+	c := testClient(t, func(r *http.Request) *http.Response {
+		calls++
+		if !strings.HasSuffix(r.URL.String(), "places:searchText") {
+			t.Fatalf("unexpected URL: %s", r.URL)
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		return jsonResp(200, `{"places":[`+apiPlaceJSON+`,`+apiPlaceJSON+`]}`)
+	})
+
+	cards, err := c.SearchCuisine(context.Background(), 13.746, 100.533, "noodles", 5000, "th", "https://api.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("SearchCuisine made %d calls, want exactly 1", calls)
+	}
+	// duplicate place in the response is de-duped by id
+	if len(cards) != 1 {
+		t.Fatalf("cards = %d, want 1 after de-dupe", len(cards))
+	}
+	if cards[0].Location.Lat != 13.75 || cards[0].Location.Lng != 100.5 {
+		t.Fatalf("card Location not set from the place: %+v", cards[0].Location)
+	}
+	// /nearby path leaves distance for the client to compute
+	if cards[0].DistanceM != 0 {
+		t.Fatalf("DistanceM = %d, want 0 (client computes it)", cards[0].DistanceM)
+	}
+	if body["rankPreference"] != "DISTANCE" {
+		t.Fatalf("rankPreference = %v, want DISTANCE", body["rankPreference"])
+	}
+	if _, hasOpen := body["openNow"]; hasOpen {
+		t.Fatal("SearchCuisine must not send openNow (client filters)")
+	}
+	if body["languageCode"] != "th" {
+		t.Fatalf("languageCode = %v, want th", body["languageCode"])
+	}
+}
+
 func TestGetPlace(t *testing.T) {
 	c := testClient(t, func(r *http.Request) *http.Response {
 		if !strings.Contains(r.URL.String(), "/v1/places/place1") {

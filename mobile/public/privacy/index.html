@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — EatRai</title>
+<meta name="description" content="How EatRai handles your data.">
+<link rel="canonical" href="https://eatrai.help/privacy">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="google-adsense-account" content="ca-pub-3020689866862162">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
+<script>
+(function () {
+  var l;
+  try { l = localStorage.getItem("eatrai-lang"); } catch (e) {}
+  if (l !== "en" && l !== "th") {
+    l = (navigator.language || "").toLowerCase().indexOf("th") === 0 ? "th" : "en";
+  }
+  document.documentElement.setAttribute("data-lang", l);
+})();
+</script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+h1,h2{font-family:"Kanit",sans-serif}
+main{max-width:680px;margin:0 auto;padding:24px 22px 64px}
+h1{font-size:26px;margin:0 0 6px;font-weight:700}
+h2{font-size:18px;margin:28px 0 8px;font-weight:600}
+p,li{color:#17140F}
+a{color:#FF5A1F}
+.muted{color:#9A9084;font-size:14px}
+hr{border:0;border-top:1px solid #E8E0D3;margin:40px 0}
+.langbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.back{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;text-decoration:none;color:#6B6358;border:1px solid #E8E0D3;background:#fff;border-radius:999px;padding:6px 13px}
+.back:hover{background:#F1EBDF}
+.back svg{flex:none}
+.langbar .toggle{display:flex}
+.langbar button{font:inherit;font-size:13px;border:1px solid #E8E0D3;background:#fff;color:#9A9084;padding:5px 12px;cursor:pointer}
+.langbar button:first-child{border-radius:999px 0 0 999px}
+.langbar button:last-child{border-radius:0 999px 999px 0;border-left:0}
+.langbar button[aria-pressed="true"]{background:#17140F;color:#fff;border-color:#17140F}
+html[data-lang="en"] .lang-th{display:none}
+html[data-lang="th"] .lang-en{display:none}
+</style>
+</head>
+<body>
+<main>
+<div class="langbar">
+  <a href="/" class="back">
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M14 6l-6 6 6 6"/></svg>
+    <span class="lang-en" lang="en">Back to EatRai</span><span class="lang-th" lang="th">กลับไปยัง EatRai</span>
+  </a>
+  <span class="toggle">
+    <button type="button" data-lang-btn="en">EN</button>
+    <button type="button" data-lang-btn="th">ไทย</button>
+  </span>
+</div>
+<div class="lang-en" lang="en">
+<h1>Privacy Policy</h1>
+<p class="muted">Last updated: 10 September 2026</p>
+
+<p>EatRai (“we”, “the app”) is a free web app at <a href="https://eatrai.help">eatrai.help</a> that helps you pick a nearby restaurant. This policy explains what data we handle and why. We keep it minimal on purpose: <strong>there are no accounts and we run no database of users.</strong></p>
+
+<h2>What we collect</h2>
+<ul>
+<li><strong>Your approximate location</strong> — only when you allow it, and only to search for restaurants near you. It is sent to our server for that single request and to Google Places (see below). We do <em>not</em> store your location on our servers or link it to you.</li>
+<li><strong>On-device storage</strong> — your saved (“liked”) places, filter choices, chosen language, and a random anonymous id are stored in your browser’s local storage on your device. They never leave your device except as described below, and clearing your browser data removes them.</li>
+<li><strong>Basic request logs</strong> — like any website, our server briefly logs IP address and request details for security and abuse prevention. These are not used to profile you and are retained only short-term.</li>
+</ul>
+
+<h2>Third parties</h2>
+<ul>
+<li><strong>Google Places API</strong> provides the restaurant listings, ratings, and photos. Your search location is passed to Google to return nearby results. See <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google’s Privacy Policy</a>.</li>
+<li><strong>Google AdSense</strong> shows ads on the app and on our area guide pages. Google and its partners may use cookies and similar technologies to serve and measure ads, including personalised ads where permitted. In the EEA, UK and Switzerland we show Google’s consent banner so you can choose. You can manage ad personalisation at <a href="https://adssettings.google.com" target="_blank" rel="noopener">adssettings.google.com</a>. More on how Google uses data from sites that use its services: <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">policies.google.com/technologies/partner-sites</a>.</li>
+<li><strong>Vercel</strong> and <strong>Google Cloud</strong> host the site and API and process requests on our behalf.</li>
+<li><strong>Donations</strong> — the “Support the developer” page shows a PromptPay QR. If you choose to donate, the payment goes directly between your bank and ours through PromptPay; no third-party processor is involved and we don’t collect any donor information.</li>
+</ul>
+
+<h2>Cookies</h2>
+<p>The app itself does not set advertising or analytics cookies. Cookies and similar storage are set by Google AdSense when ads load, subject to your consent choices where a consent banner is shown.</p>
+
+<h2>Your choices</h2>
+<ul>
+<li>Deny or revoke the browser location permission at any time — the app still works if you pick an area manually.</li>
+<li>Clear your browser’s site data for eatrai.help to erase everything stored on your device.</li>
+<li>Adjust or reject ad personalisation via the consent banner (where shown) or Google Ad Settings.</li>
+</ul>
+
+<h2>Children</h2>
+<p>EatRai is not directed at children under 13, and we do not knowingly collect their data.</p>
+
+<h2>Data outside Thailand</h2>
+<p>Our providers (Google, Vercel) may process requests on servers outside Thailand. By using the app you understand your requests may be handled in other countries.</p>
+
+<h2>Changes</h2>
+<p>We may update this policy; the “last updated” date will change and material changes will be noted on this page.</p>
+
+<h2>Contact</h2>
+<p>Questions about privacy: use our <a href="https://tally.so/r/BzyBOK" target="_blank" rel="noopener">feedback form</a> (also linked inside the app under the menu).</p>
+</div>
+
+<section lang="th" class="lang-th">
+<h1>นโยบายความเป็นส่วนตัว</h1>
+<p class="muted">ปรับปรุงล่าสุด: 10 กันยายน 2026</p>
+
+<p>EatRai เป็นเว็บแอปฟรีที่ <a href="https://eatrai.help">eatrai.help</a> ช่วยเลือกร้านอาหารใกล้ตัว นโยบายนี้อธิบายว่าเราจัดการข้อมูลอะไรบ้าง โดยตั้งใจให้น้อยที่สุด — <strong>ไม่มีระบบบัญชีผู้ใช้ และเราไม่มีฐานข้อมูลผู้ใช้</strong></p>
+
+<h2>ข้อมูลที่เราใช้</h2>
+<ul>
+<li><strong>ตำแหน่งโดยประมาณของคุณ</strong> — เฉพาะเมื่อคุณอนุญาต และใช้เพื่อค้นหาร้านใกล้คุณเท่านั้น ส่งไปยังเซิร์ฟเวอร์ของเราสำหรับคำขอนั้นและส่งต่อไปยัง Google Places เราไม่เก็บตำแหน่งของคุณไว้บนเซิร์ฟเวอร์และไม่เชื่อมโยงกับตัวคุณ</li>
+<li><strong>ข้อมูลบนเครื่องของคุณ</strong> — ร้านที่บันทึกไว้ ตัวกรอง ภาษา และรหัสสุ่มแบบไม่ระบุตัวตน ถูกเก็บใน local storage ของเบราว์เซอร์บนเครื่องคุณ ไม่ถูกส่งออกไปนอกเครื่อง (ยกเว้นตามที่ระบุด้านล่าง) และจะหายเมื่อล้างข้อมูลเบราว์เซอร์</li>
+<li><strong>บันทึกคำขอพื้นฐาน</strong> — เช่นเดียวกับเว็บไซต์ทั่วไป เซิร์ฟเวอร์บันทึก IP และรายละเอียดคำขอไว้ชั่วคราวเพื่อความปลอดภัยและป้องกันการใช้งานในทางที่ผิด ไม่นำไปสร้างโปรไฟล์</li>
+</ul>
+
+<h2>บุคคลที่สาม</h2>
+<ul>
+<li><strong>Google Places API</strong> ให้ข้อมูลร้าน คะแนน และรูปภาพ ตำแหน่งที่คุณค้นหาจะถูกส่งให้ Google — ดู <a href="https://policies.google.com/privacy?hl=th" target="_blank" rel="noopener">นโยบายของ Google</a></li>
+<li><strong>Google AdSense</strong> แสดงโฆษณาบนแอปและหน้าแนะนำพื้นที่ Google และพาร์ตเนอร์อาจใช้คุกกี้เพื่อแสดงและวัดผลโฆษณา รวมถึงโฆษณาที่ปรับตามความสนใจตามที่กฎหมายอนุญาต ในเขต EEA/สหราชอาณาจักร/สวิตเซอร์แลนด์ เราจะแสดงแบนเนอร์ขอความยินยอมของ Google จัดการได้ที่ <a href="https://adssettings.google.com" target="_blank" rel="noopener">adssettings.google.com</a></li>
+<li><strong>Vercel</strong> และ <strong>Google Cloud</strong> เป็นผู้ให้บริการโฮสต์เว็บและ API</li>
+<li><strong>การบริจาค</strong> — หน้า “สนับสนุนผู้พัฒนา” แสดง QR พร้อมเพย์ หากคุณเลือกบริจาค การชำระเงินจะเกิดขึ้นระหว่างธนาคารของคุณกับของเราโดยตรงผ่านพร้อมเพย์ ไม่มีผู้ประมวลผลบุคคลที่สาม และเราไม่เก็บข้อมูลผู้บริจาค</li>
+</ul>
+
+<h2>คุกกี้</h2>
+<p>ตัวแอปไม่ตั้งคุกกี้โฆษณาหรือวิเคราะห์ คุกกี้จะถูกตั้งโดย Google AdSense เมื่อโหลดโฆษณา ขึ้นอยู่กับการเลือกความยินยอมของคุณในพื้นที่ที่มีแบนเนอร์</p>
+
+<h2>สิทธิ์ของคุณ</h2>
+<ul>
+<li>ปฏิเสธหรือเพิกถอนสิทธิ์ตำแหน่งได้ตลอดเวลา — แอปยังใช้งานได้โดยเลือกพื้นที่เอง</li>
+<li>ล้างข้อมูลเว็บไซต์ eatrai.help เพื่อลบทุกอย่างที่เก็บบนเครื่องคุณ</li>
+<li>ปรับหรือปฏิเสธโฆษณาที่ปรับตามความสนใจผ่านแบนเนอร์ความยินยอมหรือ Google Ad Settings</li>
+</ul>
+
+<h2>เด็ก</h2>
+<p>EatRai ไม่ได้มุ่งเป้าที่เด็กอายุต่ำกว่า 13 ปี และเราไม่เก็บข้อมูลของเด็กโดยเจตนา</p>
+
+<h2>การเปลี่ยนแปลง</h2>
+<p>เราอาจปรับปรุงนโยบายนี้ วันที่ “ปรับปรุงล่าสุด” จะเปลี่ยน และการเปลี่ยนแปลงที่สำคัญจะระบุไว้ในหน้านี้</p>
+
+<h2>ติดต่อ</h2>
+<p>คำถามเรื่องความเป็นส่วนตัว: ใช้<a href="https://tally.so/r/BzyBOK" target="_blank" rel="noopener">แบบฟอร์มส่งความคิดเห็น</a> (มีลิงก์ในเมนูของแอปด้วย)</p>
+
+</section>
+<hr>
+<p class="muted"><a href="https://eatrai.help/">← EatRai</a> · <a href="https://eatrai.help/terms">Terms</a></p>
+</main>
+<script src="/lang-toggle.js" defer></script>
+</body>
+</html>

@@ -18,6 +18,7 @@ import { useT } from "../lib/i18n";
 import { useSession } from "../store/session";
 import { isTodayLine, todayHours } from "../lib/hours";
 import { openExternal } from "../lib/linking";
+import { AdCard } from "./AdCard";
 
 export function RestaurantSheet({
   visible,
@@ -156,7 +157,13 @@ export function RestaurantSheet({
 
               {loading ? <ActivityIndicator color={color.inkFaint} style={{ marginTop: space(4) }} /> : null}
 
-              <Pressable style={styles.mapsBtn} onPress={() => open(view.mapsUri)}>
+              <View style={styles.detailAd}>
+                <AdCard slot="detail" />
+              </View>
+
+              {/* extra gap (not the usual row spacing) so the ad and this button
+                  don't read as one tappable cluster — accidental-click hygiene */}
+              <Pressable style={[styles.mapsBtn, styles.mapsBtnAfterAd]} onPress={() => open(view.mapsUri)}>
                 <Text style={styles.mapsBtnText}>{t("openInMaps")}</Text>
               </Pressable>
             </View>
@@ -237,6 +244,7 @@ const styles = StyleSheet.create({
   rowValue: { fontFamily: font.body, fontSize: 14, color: color.ink, marginTop: space(1), lineHeight: 21 },
   hoursToday: { fontFamily: font.bodyBold, color: color.ink },
   summary: { fontFamily: font.body, fontSize: 14, color: color.inkSoft, marginTop: space(4), lineHeight: 22 },
+  detailAd: { height: 250, marginTop: space(6) },
   mapsBtn: {
     height: 52,
     borderRadius: radius.lg,
@@ -245,5 +253,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: space(7),
   },
+  mapsBtnAfterAd: { marginTop: space(10) },
   mapsBtnText: { fontFamily: font.display, fontSize: 15, color: color.paper },
 });

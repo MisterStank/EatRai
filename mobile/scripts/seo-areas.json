@@ -1,0 +1,39 @@
+{
+  "_note": "Data for scripts/build-seo.mjs (docs/COST_AND_MONETIZATION_PLAN.md Part 15). Edit freely — slug is the URL segment, lat/lng is the search centre. `metros` get /near/<slug>; `areas` are sub-areas of a metro. Both are generated in Thai and English. A page with fewer than `minRestaurants` results is skipped.",
+  "minRestaurants": 8,
+  "listingCount": 14,
+  "metros": [
+    { "slug": "bangkok", "en": "Bangkok", "th": "กรุงเทพฯ", "lat": 13.75, "lng": 100.52 },
+    { "slug": "chiang-mai", "en": "Chiang Mai", "th": "เชียงใหม่", "lat": 18.79, "lng": 98.99 },
+    { "slug": "pattaya", "en": "Pattaya", "th": "พัทยา", "lat": 12.93, "lng": 100.88 },
+    { "slug": "nakhon-ratchasima", "en": "Nakhon Ratchasima", "th": "นครราชสีมา", "lat": 14.97, "lng": 102.1 },
+    { "slug": "khon-kaen", "en": "Khon Kaen", "th": "ขอนแก่น", "lat": 16.44, "lng": 102.83 },
+    { "slug": "udon-thani", "en": "Udon Thani", "th": "อุดรธานี", "lat": 17.41, "lng": 102.79 },
+    { "slug": "hat-yai", "en": "Hat Yai", "th": "หาดใหญ่", "lat": 7.01, "lng": 100.47 },
+    { "slug": "phuket", "en": "Phuket", "th": "ภูเก็ต", "lat": 7.89, "lng": 98.4 },
+    { "slug": "surat-thani", "en": "Surat Thani", "th": "สุราษฎร์ธานี", "lat": 9.14, "lng": 99.33 },
+    { "slug": "nakhon-si-thammarat", "en": "Nakhon Si Thammarat", "th": "นครศรีธรรมราช", "lat": 8.43, "lng": 99.96 }
+  ],
+  "areas": [
+    { "slug": "thonglor", "en": "Thong Lo", "th": "ทองหล่อ", "lat": 13.7295, "lng": 100.5817, "metro": "bangkok" },
+    { "slug": "ekkamai", "en": "Ekkamai", "th": "เอกมัย", "lat": 13.7195, "lng": 100.585, "metro": "bangkok" },
+    { "slug": "ari", "en": "Ari", "th": "อารีย์", "lat": 13.7795, "lng": 100.544, "metro": "bangkok" },
+    { "slug": "silom", "en": "Silom", "th": "สีลม", "lat": 13.7248, "lng": 100.534, "metro": "bangkok" },
+    { "slug": "sathorn", "en": "Sathorn", "th": "สาทร", "lat": 13.72, "lng": 100.529, "metro": "bangkok" },
+    { "slug": "siam", "en": "Siam", "th": "สยาม", "lat": 13.7455, "lng": 100.533, "metro": "bangkok" },
+    { "slug": "yaowarat", "en": "Yaowarat (Chinatown)", "th": "เยาวราช", "lat": 13.7405, "lng": 100.51, "metro": "bangkok" },
+    { "slug": "asok", "en": "Asok", "th": "อโศก", "lat": 13.737, "lng": 100.56, "metro": "bangkok" },
+    { "slug": "phrom-phong", "en": "Phrom Phong", "th": "พร้อมพงษ์", "lat": 13.73, "lng": 100.5695, "metro": "bangkok" },
+    { "slug": "victory-monument", "en": "Victory Monument", "th": "อนุสาวรีย์ชัยฯ", "lat": 13.765, "lng": 100.537, "metro": "bangkok" },
+    { "slug": "banthat-thong", "en": "Banthat Thong", "th": "บรรทัดทอง", "lat": 13.744, "lng": 100.527, "metro": "bangkok" },
+    { "slug": "charoen-krung", "en": "Charoen Krung", "th": "เจริญกรุง", "lat": 13.722, "lng": 100.515, "metro": "bangkok" },
+    { "slug": "huai-khwang", "en": "Huai Khwang", "th": "ห้วยขวาง", "lat": 13.769, "lng": 100.574, "metro": "bangkok" },
+    { "slug": "on-nut", "en": "On Nut", "th": "อ่อนนุช", "lat": 13.7055, "lng": 100.601, "metro": "bangkok" },
+    { "slug": "ratchada", "en": "Ratchada", "th": "รัชดา", "lat": 13.766, "lng": 100.569, "metro": "bangkok" },
+    { "slug": "ladprao", "en": "Lat Phrao", "th": "ลาดพร้าว", "lat": 13.816, "lng": 100.561, "metro": "bangkok" },
+    { "slug": "nimman", "en": "Nimman", "th": "นิมมาน", "lat": 18.7965, "lng": 98.968, "metro": "chiang-mai" },
+    { "slug": "chiang-mai-old-city", "en": "Chiang Mai Old City", "th": "เมืองเก่าเชียงใหม่", "lat": 18.788, "lng": 98.9855, "metro": "chiang-mai" },
+    { "slug": "night-bazaar", "en": "Night Bazaar", "th": "ไนท์บาซาร์", "lat": 18.787, "lng": 99.0, "metro": "chiang-mai" },
+    { "slug": "santitham", "en": "Santitham", "th": "สันติธรรม", "lat": 18.805, "lng": 98.976, "metro": "chiang-mai" }
+  ]
+}

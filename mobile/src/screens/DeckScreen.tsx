@@ -7,16 +7,20 @@ import { Feather } from "@expo/vector-icons";
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { getNearby, reverseGeocode, type Card } from "../api/client";
+import { getNearby, reverseGeocode, isAd, type Card, type DeckItem } from "../api/client";
 import { useSession, filterCount, DEFAULT_RADIUS_M } from "../store/session";
 import { useT } from "../lib/i18n";
+import { coverageHeadline, inCoverage } from "../lib/coverage";
+import { readStartLocation } from "../lib/startLocation";
+import { spliceAds, AD_SKIP_DELAY_MS } from "../lib/deckAds";
+import { deckAdsEnabled } from "../lib/adsConfig";
+import { AdCard } from "../components/AdCard";
 import { SwipeCard, type SwipeDir } from "../components/SwipeCard";
 import { ActionBar } from "../components/ActionBar";
 import { TopBar } from "../components/TopBar";
 import { FilterSheet, type Filters } from "../components/FilterSheet";
 import { LikedSheet } from "../components/LikedSheet";
 import { HelpSheet } from "../components/HelpSheet";
-import { InfoSheet } from "../components/InfoSheet";
 import { FeedbackSheet } from "../components/FeedbackSheet";
 import { GuidePrompt } from "../components/GuidePrompt";
 import { RestaurantSheet } from "../components/RestaurantSheet";
@@ -30,6 +34,20 @@ type Coords = { lat: number; lng: number };
 const MAX_RADIUS_M = 50000;
 const LOCATE_TIMEOUT_MS = 12000;
 
+// Part 11: one ad-slot card after every N real cards, web-only. The slot itself
+// always appears on web (2026-09-12: was env-gated, so it was a no-op until
+// AdSense was configured — now it shows AdCard's own branded filler until
+// then, so there's always something there instead of nothing). Native ⇒ no-op.
+const adsEnabled = Platform.OS === "web";
+// Whether a *real* ad is actually configured for the deck slot — separate from
+// the above (no Platform.OS check here: an ad sentinel existing at all already
+// implies we're in a context where that's meaningful — tests force one in
+// regardless of platform to isolate this from adsEnabled's own gating). Only
+// when this is true does the "Skip ad" 3s dwell lock engage; forcing a delay
+// on our own house-content filler (no advertiser paying for the impression)
+// has no purpose, so the placeholder skips like a normal card.
+const realDeckAdsConfigured = deckAdsEnabled();
+
 export function DeckScreen() {
   const insets = useSafeAreaInsets();
   const t = useT();
@@ -37,8 +55,8 @@ export function DeckScreen() {
   // floating action bar / liked pill are sized so the whole deck still fits
   // on the shortest target (iPhone SE ≈ 667pt) — desktop just centres the
   // same layout in a 480pt column.
-  const deckReserve = space(30);
-  const pillOffset = space(19);
+  const deckReserve = space(31);
+  const pillOffset = space(21);
   const actionsOffset = space(3);
 
   const lang = useSession((s) => s.lang);
@@ -63,11 +81,13 @@ export function DeckScreen() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [place, setPlace] = useState<string | null>(null);
   const [manualLocation, setManualLocation] = useState(false);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<DeckItem[]>([]);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [widenM, setWidenM] = useState<number | null>(null);
+  const [degraded, setDegraded] = useState<string | null>(null);
+  const [coverageDismissed, setCoverageDismissed] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLiked, setShowLiked] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
@@ -75,7 +95,6 @@ export function DeckScreen() {
   const [showHint, setShowHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [infoKey, setInfoKey] = useState<"support" | null>(null);
   const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
 
@@ -125,6 +144,15 @@ export function DeckScreen() {
   }, []);
 
   useEffect(() => {
+    // Deep-linked from a Part 15 SEO page (?lat&lng&area) → open there, skip GPS.
+    const start = readStartLocation();
+    if (start) {
+      setManualLocation(true);
+      setError(null);
+      if (start.label) setPlace(start.label);
+      setCoords({ lat: start.lat, lng: start.lng });
+      return;
+    }
     locate();
   }, [locate]);
 
@@ -159,6 +187,9 @@ export function DeckScreen() {
         sort,
         lang,
         signal: ctrl.signal,
+        onMeta: (m) => {
+          if (!ctrl.signal.aborted) setDegraded(m.degraded);
+        },
       });
       if (ctrl.signal.aborted) return;
       // Read the current liked ids live (not via a subscribed selector) so a
@@ -169,8 +200,9 @@ export function DeckScreen() {
       const deck = next.filter(
         (c) => !excluded.current.has(c.id) && !likedIds.some((l) => l.id === c.id),
       );
-      const keepAt = keepId ? deck.findIndex((c) => c.id === keepId) : -1;
-      setCards(deck);
+      const withAds = spliceAds(deck, adsEnabled);
+      const keepAt = keepId ? withAds.findIndex((c) => c.id === keepId) : -1;
+      setCards(withAds);
       // Swipe history is positional (undo = "go back one index"), so it only
       // makes sense against the deck it was built from. Any reload — filter
       // change, new location — invalidates it, even when the current card
@@ -203,11 +235,17 @@ export function DeckScreen() {
 
   const resolve = useCallback(
     (dir: SwipeDir) => {
-      const card = cards[index];
-      if (!card) return;
-      history.current.push({ card, dir });
+      const item = cards[index];
+      if (!item) return;
+      if (isAd(item)) {
+        // swiping the ad card away — not liked, not in history
+        dragX.value = 0;
+        setIndex((n) => n + 1);
+        return;
+      }
+      history.current.push({ card: item, dir });
       if (dir === "like") {
-        addLiked(card);
+        addLiked(item);
         haptic("success");
       } else {
         haptic("light");
@@ -224,15 +262,54 @@ export function DeckScreen() {
     if (last.dir === "like") removeLiked(last.card.id);
     haptic("light");
     dragX.value = 0;
-    setIndex((n) => Math.max(0, n - 1));
-  }, [removeLiked, dragX]);
+    setIndex((n) => {
+      let i = n - 1;
+      while (i > 0 && isAd(cards[i])) i--; // step back over any ad card
+      return Math.max(0, i);
+    });
+  }, [removeLiked, dragX, cards]);
+
+  const activeCard = current && !isAd(current) ? current : null;
+  const currentIsAd = !!current && isAd(current);
+
+  // The in-deck ad is fully locked (button disabled + swipe disabled) for
+  // AD_SKIP_DELAY_MS after it becomes the top card, then releases both at
+  // once. Chosen after a live A/B trial against the button-only-gated
+  // variant — see Part 11.1e for the full reasoning and the accepted risk.
+  // Only engages once a real ad is configured (realDeckAdsConfigured) — the
+  // house-content filler shown before then has no advertiser to justify a
+  // forced dwell, so it skips instantly like a normal card (Part 11.1f).
+  const [adSkipProgress, setAdSkipProgress] = useState(currentIsAd ? 0 : 1);
+  useEffect(() => {
+    if (!currentIsAd || !realDeckAdsConfigured) {
+      setAdSkipProgress(1);
+      return;
+    }
+    setAdSkipProgress(0);
+    const start = Date.now();
+    const id = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / AD_SKIP_DELAY_MS);
+      setAdSkipProgress(p);
+      if (p >= 1) clearInterval(id);
+    }, 100);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIsAd, index]);
+  const adSkipReady = adSkipProgress >= 1;
+  const adSkipSecondsLeft = Math.max(0, Math.ceil((1 - adSkipProgress) * (AD_SKIP_DELAY_MS / 1000)));
 
   const openDirections = () => {
-    if (current) openExternal(current.mapsUri);
+    if (currentIsAd) {
+      // the ad card has no restaurant to navigate to — reuse the slot to point
+      // at the other way to support the app (see docs Part 11.6 grilling notes)
+      openExternal("https://eatrai.help/support");
+      return;
+    }
+    if (activeCard) openExternal(activeCard.mapsUri);
   };
 
   const openDetail = () => {
-    if (current) setDetail(current);
+    if (activeCard) setDetail(activeCard);
   };
 
   const dismissHint = () => {
@@ -252,7 +329,7 @@ export function DeckScreen() {
   };
 
   const widenSearch = () => {
-    excluded.current = new Set(cards.map((c) => c.id));
+    excluded.current = new Set(cards.filter((c) => !isAd(c)).map((c) => c.id));
     setWidenM((prev) => {
       const from = prev ?? radiusM;
       return from >= MAX_RADIUS_M ? MAX_RADIUS_M : Math.min(MAX_RADIUS_M, from * 2);
@@ -267,8 +344,8 @@ export function DeckScreen() {
   };
 
   // --- keyboard shortcuts on web ---
-  const kbd = useRef({ resolve, undo, openDetail: () => current && setDetail(current) });
-  kbd.current = { resolve, undo, openDetail: () => current && setDetail(current) };
+  const kbd = useRef({ resolve, undo, openDetail });
+  kbd.current = { resolve, undo, openDetail };
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const anyModal =
@@ -279,8 +356,7 @@ export function DeckScreen() {
       !!detail ||
       showHint ||
       showHelp ||
-      showGuidePrompt ||
-      infoKey !== null;
+      showGuidePrompt;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "?" && !anyModal) {
         setShowHelp(true);
@@ -294,7 +370,7 @@ export function DeckScreen() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt, infoKey]);
+  }, [showFilters, showLiked, showLocation, showDecide, detail, showHint, showHelp, showGuidePrompt]);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(dragX.value, [40, 130], [0, 0.55], Extrapolation.CLAMP),
@@ -306,6 +382,7 @@ export function DeckScreen() {
   const stack = cards.slice(index, index + 3);
   const deckDone = !loading && !error && cards.length > 0 && index >= cards.length;
   const canWiden = effectiveRadius < MAX_RADIUS_M;
+  const outOfCoverage = !!coords && !inCoverage(coords.lat, coords.lng);
 
   return (
     <View style={styles.root}>
@@ -318,8 +395,27 @@ export function DeckScreen() {
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
           onFeedback={() => setShowFeedback(true)}
-          onSupport={() => setInfoKey("support")}
+          onSupport={() => openExternal("https://eatrai.help/support")}
+          onLegal={() => openExternal("https://eatrai.help/privacy")}
         />
+
+        {outOfCoverage && !coverageDismissed ? (
+          <Pressable
+            style={styles.notice}
+            onPress={() => setCoverageDismissed(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("dismiss")}
+          >
+            <Text style={styles.noticeText} numberOfLines={2}>
+              {t("coverageBannerOut", { areas: coverageHeadline(lang) })}
+            </Text>
+            <Feather name="x" size={14} color={color.inkFaint} />
+          </Pressable>
+        ) : degraded ? (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{t("degradedNote")}</Text>
+          </View>
+        ) : null}
 
         <View style={[styles.deck, { marginBottom: insets.bottom + deckReserve }]}>
           <Animated.View pointerEvents="none" style={[styles.glow, styles.glowLike, glowStyle]}>
@@ -334,6 +430,9 @@ export function DeckScreen() {
           ) : error ? (
             <View style={styles.message}>
               <Text style={styles.messageText}>{error}</Text>
+              {outOfCoverage ? (
+                <Text style={[styles.messageText, styles.messageHint]}>{t("coverageEmptyHint")}</Text>
+              ) : null}
               <View style={styles.messageActions}>
                 <Pressable style={styles.retry} onPress={load}>
                   <Text style={styles.retryText}>{t("tryAgain")}</Text>
@@ -366,11 +465,21 @@ export function DeckScreen() {
                   <Text style={styles.linkText}>{t("changeLocation")}</Text>
                 </Pressable>
               </View>
+              <View style={styles.doneAd}>
+                <AdCard slot="done" />
+              </View>
             </View>
           ) : (
             stack.map((card, i) => (
               <View key={card.id} style={[StyleSheet.absoluteFill, { zIndex: stack.length - i }]}>
-                <SwipeCard card={card} depth={i} dragX={dragX} onResolve={resolve} onDetail={openDetail} />
+                <SwipeCard
+                  card={card}
+                  depth={i}
+                  dragX={dragX}
+                  onResolve={resolve}
+                  onDetail={openDetail}
+                  adSwipeLocked={i === 0 && !adSkipReady}
+                />
               </View>
             ))
           )}
@@ -391,16 +500,22 @@ export function DeckScreen() {
           </Pressable>
         ) : null}
 
-        <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
-          <ActionBar
-            onUndo={undo}
-            onNope={() => resolve("nope")}
-            onLike={() => resolve("like")}
-            onDirections={openDirections}
-            canUndo={history.current.length > 0}
-            disabled={!current}
-          />
-        </View>
+        {current ? (
+          <View style={[styles.actions, { bottom: insets.bottom + actionsOffset }]}>
+            <ActionBar
+              onUndo={undo}
+              onNope={() => resolve("nope")}
+              onLike={() => resolve("like")}
+              onDirections={openDirections}
+              canUndo={history.current.length > 0}
+              disabled={!current}
+              variant={currentIsAd ? "ad" : "restaurant"}
+              adSkipReady={adSkipReady}
+              adSkipProgress={adSkipProgress}
+              adSkipSecondsLeft={adSkipSecondsLeft}
+            />
+          </View>
+        ) : null}
       </View>
 
       <FilterSheet
@@ -418,11 +533,6 @@ export function DeckScreen() {
       />
       <HelpSheet visible={showHelp} onClose={() => setShowHelp(false)} />
       <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />
-      <InfoSheet
-        visible={infoKey !== null}
-        title={t("supportDev")}
-        onClose={() => setInfoKey(null)}
-      />
       <GuidePrompt
         visible={showGuidePrompt}
         onShowMe={acceptGuide}
@@ -494,6 +604,22 @@ const styles = StyleSheet.create({
   glowNope: { left: -space(4.5) },
   message: { paddingHorizontal: space(6), alignItems: "center" },
   messageText: { fontFamily: font.body, fontSize: 15, color: color.inkSoft, textAlign: "center", lineHeight: 22 },
+  messageHint: { fontSize: 13.5, color: color.inkFaint, marginTop: space(2) },
+  doneAd: { alignSelf: "stretch", height: 260, marginTop: space(5) },
+  notice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(2),
+    marginHorizontal: space(4.5),
+    marginTop: space(2),
+    paddingHorizontal: space(3.5),
+    paddingVertical: space(2),
+    borderRadius: radius.md,
+    backgroundColor: color.surfaceAlt,
+    borderWidth: 1,
+    borderColor: color.line,
+  },
+  noticeText: { flex: 1, fontFamily: font.body, fontSize: 12.5, color: color.inkSoft, lineHeight: 17 },
   messageActions: { alignItems: "center", marginTop: space(4), gap: space(2.5) },
   retry: {
     borderRadius: radius.pill,
