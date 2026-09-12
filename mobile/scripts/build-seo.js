@@ -214,9 +214,11 @@ ${ad}
 <footer>
 <a href="${areaPath(area.slug, isTh ? "en" : "th")}">${isTh ? "English" : "ภาษาไทย"}</a>
 <a href="${SITE}/">EatRai</a>
+<a href="${SITE}/about">${isTh ? "เกี่ยวกับเรา" : "About"}</a>
 <a href="${SITE}/privacy">${isTh ? "ความเป็นส่วนตัว" : "Privacy"}</a>
 <a href="${SITE}/terms">${isTh ? "เงื่อนไข" : "Terms"}</a>
 <a href="${SITE}/support">${isTh ? "สนับสนุนผู้พัฒนา" : "Support the developer"}</a>
+<a href="${SITE}/contact">${isTh ? "ติดต่อเรา" : "Contact"}</a>
 </footer>
 </body>
 </html>
@@ -285,7 +287,8 @@ async function main() {
     }
   }
 
-  await writeFile(path.join(PUBLIC, "sitemap.xml"), sitemapXml(written));
+  const staticPages = ["/about", "/privacy", "/terms", "/support", "/contact"];
+  await writeFile(path.join(PUBLIC, "sitemap.xml"), sitemapXml([...staticPages, ...written]));
   console.log(`\nSEO: ${written.length} pages, ${skipped} skipped. API=${API}`);
 }
 

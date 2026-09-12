@@ -6,9 +6,11 @@ const read = (page) => pub(path.join(page, "index.html"));
 
 describe("hand-maintained static pages", () => {
   test.each([
+    ["about", "https://eatrai.help/about"],
     ["privacy", "https://eatrai.help/privacy"],
     ["terms", "https://eatrai.help/terms"],
     ["support", "https://eatrai.help/support"],
+    ["contact", "https://eatrai.help/contact"],
   ])("%s: canonical, crawlable lang, and a language toggle", (page, canonical) => {
     const html = read(page);
     expect(html).toContain(`<link rel="canonical" href="${canonical}">`);
@@ -72,9 +74,31 @@ describe("hand-maintained static pages", () => {
   });
 
   test("no dead TipMe references, no leaked bank-account digits", () => {
-    for (const p of ["privacy", "terms", "support"]) {
+    for (const p of ["about", "privacy", "terms", "support", "contact"]) {
       expect(read(p).toLowerCase()).not.toContain("tipme");
       expect(read(p)).not.toMatch(/0805/);
     }
+  });
+
+  test("the 5 static pages cross-link each other (AdSense wants About + Contact reachable)", () => {
+    const others = { about: "/about", privacy: "/privacy", terms: "/terms", support: "/support", contact: "/contact" };
+    for (const page of Object.keys(others)) {
+      const html = read(page);
+      for (const [name, href] of Object.entries(others)) {
+        if (name === page) continue;
+        expect(html).toContain(`href="${href}"`);
+      }
+    }
+  });
+
+  test("about page: what EatRai is + who built it", () => {
+    const html = read("about");
+    expect(html).toContain("Chakkrit Jongkraijak");
+    expect(html).toContain("chakkritjk-portfolio.vercel.app");
+  });
+
+  test("contact page: links the feedback form", () => {
+    const html = read("contact");
+    expect(html).toContain("https://tally.so/r/BzyBOK");
   });
 });
