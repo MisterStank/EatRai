@@ -24,3 +24,7 @@ mobile/public/sitemap.xml
 
 # local-only working docs — not published to GitHub
 docs/
+
+# python (kill-switch function)
+__pycache__/
+*.pyc
