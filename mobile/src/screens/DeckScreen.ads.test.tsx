@@ -18,6 +18,14 @@ jest.mock("../lib/deckAds", () => ({
   },
 }));
 
+// Simulate a real ad being configured for the deck slot, so the Skip-ad
+// countdown lock (Part 11.1e) engages — otherwise these tests would see the
+// house-content filler's instant-skip behaviour (Part 11.1f) instead.
+jest.mock("../lib/adsConfig", () => ({
+  ...jest.requireActual("../lib/adsConfig"),
+  deckAdsEnabled: () => true,
+}));
+
 const mockOpenExternal = jest.fn();
 jest.mock("../lib/linking", () => ({ openExternal: (...a: unknown[]) => mockOpenExternal(...a) }));
 

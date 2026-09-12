@@ -34,9 +34,19 @@ type Coords = { lat: number; lng: number };
 const MAX_RADIUS_M = 50000;
 const LOCATE_TIMEOUT_MS = 12000;
 
-// Part 11: one AdSense card after every N real cards, web-only, env-gated (see
-// adsConfig). Unconfigured (dev, tests, native) ⇒ `spliceAds` is a no-op.
-const adsEnabled = Platform.OS === "web" && deckAdsEnabled();
+// Part 11: one ad-slot card after every N real cards, web-only. The slot itself
+// always appears on web (2026-09-12: was env-gated, so it was a no-op until
+// AdSense was configured — now it shows AdCard's own branded filler until
+// then, so there's always something there instead of nothing). Native ⇒ no-op.
+const adsEnabled = Platform.OS === "web";
+// Whether a *real* ad is actually configured for the deck slot — separate from
+// the above (no Platform.OS check here: an ad sentinel existing at all already
+// implies we're in a context where that's meaningful — tests force one in
+// regardless of platform to isolate this from adsEnabled's own gating). Only
+// when this is true does the "Skip ad" 3s dwell lock engage; forcing a delay
+// on our own house-content filler (no advertiser paying for the impression)
+// has no purpose, so the placeholder skips like a normal card.
+const realDeckAdsConfigured = deckAdsEnabled();
 
 export function DeckScreen() {
   const insets = useSafeAreaInsets();
@@ -266,9 +276,12 @@ export function DeckScreen() {
   // AD_SKIP_DELAY_MS after it becomes the top card, then releases both at
   // once. Chosen after a live A/B trial against the button-only-gated
   // variant — see Part 11.1e for the full reasoning and the accepted risk.
+  // Only engages once a real ad is configured (realDeckAdsConfigured) — the
+  // house-content filler shown before then has no advertiser to justify a
+  // forced dwell, so it skips instantly like a normal card (Part 11.1f).
   const [adSkipProgress, setAdSkipProgress] = useState(currentIsAd ? 0 : 1);
   useEffect(() => {
-    if (!currentIsAd) {
+    if (!currentIsAd || !realDeckAdsConfigured) {
       setAdSkipProgress(1);
       return;
     }
