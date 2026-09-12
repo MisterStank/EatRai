@@ -9,6 +9,17 @@ over Google Places. Right-swipes are saved **on the device** (AsyncStorage /
 localStorage) so they're there when you come back — nothing syncs, nothing leaves
 the phone.
 
+## Architecture
+
+![EatRai architecture](.github/assets/architecture.png)
+
+No database, no accounts — the client is entirely stateless. Cloudflare fronts
+Cloud Run for edge caching and a rate-limit rule; the Go API enforces per-IP and
+per-client quota before ever calling Places. A Cloud Billing budget alert can
+trip a kill-switch that forces `MOCK=true` so the app keeps serving generated
+data with zero further Places spend until a human clears it
+(`infra/killswitch/`).
+
 ## Stack
 
 - **Mobile:** React Native (Expo, TypeScript) — `gesture-handler` + `reanimated`
