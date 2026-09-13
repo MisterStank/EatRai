@@ -195,6 +195,7 @@ footer{padding:24px 20px 48px;color:#9A9084;font-size:13px;border-top:1px solid 
 footer a{color:#9A9084;margin-right:14px}
 @media(max-width:480px){.thumb{width:92px;height:78px}}
 </style>
+<script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
 <header>

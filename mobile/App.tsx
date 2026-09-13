@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
+import { Analytics } from "@vercel/analytics/react";
 import { Kanit_600SemiBold, Kanit_700Bold } from "@expo-google-fonts/kanit";
 import {
   Anuphan_400Regular,
@@ -51,6 +52,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.paper }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
+        {Platform.OS === "web" ? <Analytics /> : null}
         {!loaded ? (
           <View style={{ flex: 1, backgroundColor: color.paper }} />
         ) : shared ? (
