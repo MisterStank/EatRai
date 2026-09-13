@@ -25,6 +25,17 @@ type Config struct {
 	// reused before we call Places again.
 	CacheTTL time.Duration `envconfig:"CACHE_TTL" default:"10m"`
 
+	// CacheBucket, when set, is a GCS bucket the in-memory cache periodically
+	// snapshots itself to and restores from at boot — so a Cloud Run cold
+	// start (redeploy, or scale-to-zero after idle) starts warm instead of
+	// empty. Empty (the default) = in-memory only, as before; local dev and
+	// tests never need this set. See cmd/api/main.go.
+	CacheBucket string `envconfig:"CACHE_BUCKET" default:""`
+
+	// CacheSnapshotEvery is how often the warm cache is persisted to
+	// CacheBucket. Only used when CacheBucket is set.
+	CacheSnapshotEvery time.Duration `envconfig:"CACHE_SNAPSHOT_EVERY" default:"2m"`
+
 	// CORSOrigin is the allowed browser origin(s) for the web build, comma
 	// separated. "*" in dev; set to the real origin(s) in production. The same
 	// list gates non-browser abuse of the paid endpoints (see RequireOrigin).
