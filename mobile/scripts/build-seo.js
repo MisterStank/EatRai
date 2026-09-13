@@ -1,9 +1,20 @@
 // Programmatic SEO page generator — docs/COST_AND_MONETIZATION_PLAN.md Part 15.
 //
 // Reads scripts/seo-areas.json, hits the EatRai API for each area's restaurant
-// list (server-cached, so this adds ~zero Places cost), and writes a static
-// HTML page per area into mobile/public/near/… and mobile/public/th/near/….
-// `npx expo export` then copies public/ into dist/. Run: `npm run build:seo`.
+// list, and writes a static HTML page per area into mobile/public/near/… and
+// mobile/public/th/near/…. `npx expo export` then copies public/ into dist/.
+// Run: `npm run build:seo`.
+//
+// COST NOTE: the backend's cache is in-process memory and resets on every
+// backend redeploy / cold start (see backend/internal/cache/cache.go) — there
+// is no CDN/edge layer in front of it yet (plan Part 5, not done). So this
+// script is NOT "server-cached, ~zero cost" the way it once assumed: every run
+// is up to (areas × languages) REAL Google Places calls. Vercel builds a
+// preview deployment for every git push, and this script used to run on every
+// one of them — that alone burned real budget. It now only runs on Vercel's
+// production deployments (see shouldRunOnThisDeploy); other builds skip
+// straight to a no-op so `/near/*` and sitemap.xml just aren't produced for
+// previews. Regenerate on demand with `npm run build:seo` locally if needed.
 //
 // CommonJS so jest (via babel-jest) can require the pure helpers directly.
 // Never throws — a failed fetch just skips that page so the SPA build is safe.
@@ -22,6 +33,18 @@ const ADSENSE_CLIENT = process.env.EXPO_PUBLIC_ADSENSE_CLIENT || "";
 const ADSENSE_SLOT = process.env.EXPO_PUBLIC_ADSENSE_SLOT_SEO || "";
 
 // ---------------------------------------------------------------- pure helpers
+
+// Only fetch-and-regenerate on a real Vercel *production* deploy. `VERCEL` is
+// unset for local runs / CI (npm run build:seo) — those always run, same as
+// before. On Vercel, `VERCEL_ENV` is "production", "preview", or
+// "development" — skip the two that hit the live API for no reader-facing
+// reason (a preview URL nobody indexes). `FORCE_SEO_BUILD=1` overrides, for a
+// deliberate one-off preview check.
+function shouldRunOnThisDeploy(env) {
+  if (env.FORCE_SEO_BUILD === "1") return true;
+  if (env.VERCEL !== "1") return true; // local / CI
+  return env.VERCEL_ENV === "production";
+}
 
 const esc = (s) =>
   String(s == null ? "" : s).replace(
@@ -245,6 +268,13 @@ async function fetchCards(lat, lng, lang) {
 }
 
 async function main() {
+  if (!shouldRunOnThisDeploy(process.env)) {
+    console.log(
+      `SEO: skipping (VERCEL_ENV=${process.env.VERCEL_ENV || "-"}) — only runs on production deploys, local, or FORCE_SEO_BUILD=1. This avoids spending real Google Places calls on every preview build.`,
+    );
+    return;
+  }
+
   const cfg = JSON.parse(await readFile(path.join(__dirname, "seo-areas.json"), "utf8"));
   const min = cfg.minRestaurants == null ? 8 : cfg.minRestaurants;
   const take = cfg.listingCount == null ? 14 : cfg.listingCount;
@@ -293,7 +323,16 @@ async function main() {
   console.log(`\nSEO: ${written.length} pages, ${skipped} skipped. API=${API}`);
 }
 
-module.exports = { esc, shouldGenerate, rankScore, areaPath, priceText, sitemapXml, pageHtml };
+module.exports = {
+  esc,
+  shouldGenerate,
+  rankScore,
+  areaPath,
+  priceText,
+  sitemapXml,
+  pageHtml,
+  shouldRunOnThisDeploy,
+};
 
 if (require.main === module) {
   main().catch((e) => {

@@ -1,4 +1,5 @@
-const { esc, shouldGenerate, areaPath, sitemapXml, priceText, pageHtml } = require("./build-seo.js");
+const { esc, shouldGenerate, areaPath, sitemapXml, priceText, pageHtml, shouldRunOnThisDeploy } =
+  require("./build-seo.js");
 
 const area = { slug: "thonglor", en: "Thong Lo", th: "ทองหล่อ", lat: 13.7295, lng: 100.5817, metro: "bangkok" };
 const card = (over = {}) => ({
@@ -84,5 +85,25 @@ describe("build-seo pure helpers", () => {
     test("sibling area cross-links", () => {
       expect(html).toContain('href="/near/ari"');
     });
+  });
+});
+
+describe("shouldRunOnThisDeploy — skip preview builds to avoid burning real Places calls", () => {
+  test("runs locally / in CI (no VERCEL env)", () => {
+    expect(shouldRunOnThisDeploy({})).toBe(true);
+  });
+  test("runs on a Vercel production deploy", () => {
+    expect(shouldRunOnThisDeploy({ VERCEL: "1", VERCEL_ENV: "production" })).toBe(true);
+  });
+  test("skips a Vercel preview deploy", () => {
+    expect(shouldRunOnThisDeploy({ VERCEL: "1", VERCEL_ENV: "preview" })).toBe(false);
+  });
+  test("skips a Vercel development deploy", () => {
+    expect(shouldRunOnThisDeploy({ VERCEL: "1", VERCEL_ENV: "development" })).toBe(false);
+  });
+  test("FORCE_SEO_BUILD=1 overrides the skip", () => {
+    expect(shouldRunOnThisDeploy({ VERCEL: "1", VERCEL_ENV: "preview", FORCE_SEO_BUILD: "1" })).toBe(
+      true,
+    );
   });
 });
