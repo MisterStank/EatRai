@@ -39,7 +39,7 @@ type Server struct {
 	IPLimit        *iplimit.Limiter // nil = unlimited (tests)
 	Mock           bool             // dev-only: no Google API key configured. Never true in production.
 	NoFetch        bool             // production cost cap engaged: stop calling Google, but never fabricate data — serve stale cache or an honest error.
-	AllowedOrigins []string // CORS + origin gate; ["*"] disables the gate
+	AllowedOrigins []string         // CORS + origin gate; ["*"] disables the gate
 	RequireOrigin  bool
 	Log            *slog.Logger
 }
