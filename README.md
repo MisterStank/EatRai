@@ -23,7 +23,8 @@ data with zero further Places spend until a human clears it
 ## Stack
 
 - **Mobile:** React Native (Expo, TypeScript) — `gesture-handler` + `reanimated`
-  for the deck, `zustand` for session state, Bricolage Grotesque + Hanken Grotesk
+  for the deck, `zustand` for session state, `expo-image` for photos, Anuphan +
+  Kanit (`@expo-google-fonts`)
 - **Backend:** Go 1.23 — chi. One binary, three `GET` routes, an in-memory TTL
   cache. No persistence.
 - **Data:** Google Places API (New) — Nearby Search + Place Photos. Without a key
@@ -60,19 +61,30 @@ Full runbook is in `docs/DEPLOYMENT.md` (kept local, not in this repo).
 ## Backend API
 
 ```
-GET /status                                         -> {ok, mock}
-GET /nearby?lat&lng&radius&categories=thai,cafe&openNow=true
-                                                    -> {cards: [Card]}
-GET /photo?name=places/<id>/photos/<id>&w=900       -> image bytes (key stays server-side)
+GET /status, /healthcheck                            -> {ok, mock, noFetch, cache, quota, iplimit, degraded}
+GET /nearby?lat&lng&cuisine&lang                      -> {cards: [Card]}  (grid-cell cache; filtering is client-side)
+GET /place?id&lat&lng&lang                            -> Place details (cached 24h)
+GET /list?ids=a,b,c&lang                              -> Place[] for a shared list, one round trip, bounded concurrency
+GET /geocode?address                                  -> geocoded location
+GET /suggest?input                                    -> place autocomplete suggestions
+GET /reverse?lat&lng                                  -> reverse-geocoded address
+GET /photo?name=places/<id>/photos/<id>&w=900          -> image bytes (key stays server-side)
 ```
 
-`Card`: `id, name, address, priceLevel (0-4), rating, ratingCount, photoUrls[],
-cuisines[], distanceM, openNow, openKnown, mapsUri`. Nearby results are cached
-per rounded location + filter for `CACHE_TTL` (default 10m) to keep Places calls
-down.
+All routes above except `/status`/`/healthcheck` sit behind a per-IP rate
+limiter; `/nearby`, `/place`, `/list`, `/geocode`, `/suggest`, `/reverse` also
+sit behind an origin gate (`REQUIRE_ORIGIN`) and a monthly quota meter
+(`internal/quota`) that soft-degrades to stale cache or an honest error once a
+per-SKU free-tier cap is hit — see `internal/iplimit`, `internal/ratelimit`,
+and `docs/COST_AND_MONETIZATION_PLAN.md`. `/nearby` results are cached per grid
+cell (`internal/grid`) for `CACHE_TTL`; a `CACHE_BUCKET` snapshots the warm
+cache to GCS so a Cloud Run cold start doesn't start empty.
 
-Config (`backend/.env`): `HTTP_ADDR`, `CACHE_TTL`, `CORS_ORIGIN`,
-`GOOGLE_PLACES_API_KEY`, `MOCK`.
+Config (`backend/.env`): `HTTP_ADDR`, `CACHE_TTL`, `CACHE_BUCKET`,
+`CACHE_SNAPSHOT_EVERY`, `CORS_ORIGIN`, `REQUIRE_ORIGIN`, `RATE_LIMIT_RPM`,
+`GOOGLE_PLACES_API_KEY`, `MOCK`, `NO_FETCH`, `FREE_CAP_SEARCH`,
+`FREE_CAP_DETAILS`, `FREE_CAP_PHOTO`, `IPLIMIT_HOUR`, `IPLIMIT_DAY`,
+`IPLIMIT_IP_HOUR`, `IPLIMIT_IP_DAY`.
 
 ## Layout
 
@@ -82,15 +94,21 @@ backend/
   internal/
     config/           env config
     places/           Places (New) client + normalisation + curated mock data
-    cache/            in-memory TTL cache
-    httpapi/          chi router: /status, /nearby, /photo
+    cache/            in-memory TTL cache (+ optional GCS snapshot)
+    grid/             lat/lng -> cache-cell mapping for /nearby
+    quota/            monthly per-SKU free-tier meter (search/details/photo)
+    iplimit/          per-IP / per-client fetch budgeting
+    ratelimit/        per-IP requests-per-minute limiter
+    httpapi/          chi router: status, nearby, place, list, geocode, suggest, reverse, photo
 mobile/
   src/
-    api/client.ts     getNearby()
+    api/client.ts     backend client (nearby, place, list, geocode, suggest, reverse)
     store/session.ts  filters + liked pile, persisted on-device (zustand persist)
-    lib/              categories, formatting
-    components/       SwipeCard, ActionBar, TopBar, FilterSheet, LikedSheet
-    screens/          DeckScreen (the whole app)
+    lib/              categories, formatting, i18n, deck ads, sharing, coverage, decide logic
+    components/       SwipeCard, ActionBar, TopBar, FilterSheet, LikedSheet, RestaurantSheet,
+                       DecideSheet, AdCard, AreaSearch, LocationForm, MapLocationScreen,
+                       FeedbackSheet, GuidePrompt, HelpSheet
+    screens/          DeckScreen (main app), SharedListScreen (opening a shared list link)
     theme/tokens.ts   "Fresh Market" palette + fonts
 ```
 
