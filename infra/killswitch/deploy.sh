@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup for the EatRai cost kill-switch.
 #
-#   Budget (Cloud Billing)  --alert-->  Pub/Sub topic  --trigger-->  Cloud Function  --sets MOCK=true-->  Cloud Run
+#   Budget (Cloud Billing)  --alert-->  Pub/Sub topic  --trigger-->  Cloud Function  --sets NO_FETCH=true-->  Cloud Run
 #
 # Run from this directory once. Re-running is safe (create steps that already
 # exist just error; the function deploy updates in place).
@@ -126,10 +126,10 @@ Done.
 Test without spending money:
   gcloud pubsub topics publish $TOPIC --message='{"budgetDisplayName":"EatRai kill-switch","costAmount":99,"budgetAmount":15,"currencyCode":"USD","alertThresholdExceeded":1.0}'
   gcloud functions logs read $FUNCTION --region $REGION --gen2 --limit 20
-  gcloud run services describe $RUN_SERVICE --region $REGION --format='value(spec.template.spec.containers[0].env)'   # expect MOCK=true
+  gcloud run services describe $RUN_SERVICE --region $REGION --format='value(spec.template.spec.containers[0].env)'   # expect NO_FETCH=true
 
 Clear the kill-switch (after you've dealt with the cause):
-  gcloud run services update $RUN_SERVICE --region $REGION --remove-env-vars MOCK
+  gcloud run services update $RUN_SERVICE --region $REGION --remove-env-vars NO_FETCH
 
 Dry-run mode (log only, never patch Cloud Run):
   gcloud functions deploy $FUNCTION --gen2 --region $REGION --update-env-vars DRY_RUN=true

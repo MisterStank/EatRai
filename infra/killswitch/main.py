@@ -2,14 +2,15 @@
 
 A GCP Cloud Function (2nd gen) subscribed to a Cloud Billing budget's Pub/Sub
 topic. When month-to-date spend crosses the configured line it forces the
-Cloud Run backend into MOCK mode (MOCK=true) — the app keeps serving generated
-restaurants, and Google Places is not called again until someone clears it.
+Cloud Run backend into NO_FETCH mode (NO_FETCH=true) — the app stops calling
+Google Places and serves real stale cache or an honest "unavailable" response
+instead (never fabricated data), until someone clears it.
 
 See docs/COST_AND_MONETIZATION_PLAN.md Part 7 / Part 13. The rule: this cap is
 <= pessimistic ad revenue, so EatRai cannot run at a loss.
 
-Behaviour is latch-on by default: it only ever *sets* MOCK=true. Recovery is
-manual (redeploy without MOCK, or `gcloud run services update ... --remove-env-vars MOCK`)
+Behaviour is latch-on by default: it only ever *sets* NO_FETCH=true. Recovery is
+manual (redeploy without NO_FETCH, or `gcloud run services update ... --remove-env-vars NO_FETCH`)
 unless AUTO_RESTORE=true is set.
 
 Environment (set at deploy time):
@@ -18,9 +19,9 @@ Environment (set at deploy time):
   RUN_SERVICE      Cloud Run service name, e.g. eatrai                         (required)
   KILL_AT          trip when threshold-exceeded OR cost/budget >= this ratio   (default 1.0)
   KILL_AT_ABS      also trip when month-to-date cost >= this many currency units (optional)
-  AUTO_RESTORE     "true" => clear MOCK when a later message shows cost has
+  AUTO_RESTORE     "true" => clear NO_FETCH when a later message shows cost has
                    fallen back below RESTORE_BELOW (e.g. new billing month)    (default false)
-  RESTORE_BELOW    ratio under which AUTO_RESTORE clears MOCK                   (default 0.5)
+  RESTORE_BELOW    ratio under which AUTO_RESTORE clears NO_FETCH                   (default 0.5)
   DRY_RUN          "true" => log what it would do, change nothing              (default false)
 """
 
@@ -110,24 +111,24 @@ def _should_restore(payload: dict) -> bool:
 # --------------------------------------------------------------- Cloud Run patch
 
 
-def _set_mock(on: bool, reason: str) -> str:
+def _set_no_fetch(on: bool, reason: str) -> str:
     from google.cloud import run_v2  # imported here so the module loads without GCP libs
 
     client = run_v2.ServicesClient()
     svc = client.get_service(name=_service_path())
 
     container = svc.template.containers[0]
-    current = next((e for e in container.env if e.name == "MOCK"), None)
+    current = next((e for e in container.env if e.name == "NO_FETCH"), None)
     is_on = bool(current and current.value == "true")
 
     if on and is_on:
-        return "no-op: MOCK already true"
+        return "no-op: NO_FETCH already true"
     if not on and not is_on:
-        return "no-op: MOCK already unset"
+        return "no-op: NO_FETCH already unset"
 
-    kept = [e for e in container.env if e.name != "MOCK"]
+    kept = [e for e in container.env if e.name != "NO_FETCH"]
     if on:
-        kept.append(run_v2.EnvVar(name="MOCK", value="true"))
+        kept.append(run_v2.EnvVar(name="NO_FETCH", value="true"))
     container.env = kept
 
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -138,7 +139,7 @@ def _set_mock(on: bool, reason: str) -> str:
     svc.template.revision = ""
 
     if DRY_RUN:
-        return f"DRY_RUN: would set MOCK={'true' if on else '(removed)'} — {reason}"
+        return f"DRY_RUN: would set NO_FETCH={'true' if on else '(removed)'} — {reason}"
 
     # update_service returning an operation means Cloud Run accepted the change and
     # the new revision is rolling out. Confirming the rollout needs project-scoped
@@ -148,9 +149,9 @@ def _set_mock(on: bool, reason: str) -> str:
     verb = "true" if on else "(removed)"
     try:
         op.result(timeout=180)
-        return f"MOCK={verb} deployed — {reason}"
+        return f"NO_FETCH={verb} deployed — {reason}"
     except Exception as e:  # noqa: BLE001 — best-effort confirmation only
-        return f"MOCK={verb} submitted (rollout not confirmed: {type(e).__name__}) — {reason}"
+        return f"NO_FETCH={verb} submitted (rollout not confirmed: {type(e).__name__}) — {reason}"
 
 
 # --------------------------------------------------------------------- entry pt
@@ -174,12 +175,12 @@ def killswitch(cloud_event):
     kill, reason = _should_kill(payload)
     if kill:
         log.warning("KILL: %s", reason)
-        log.warning(_set_mock(True, reason))
+        log.warning(_set_no_fetch(True, reason))
         return
 
     if _should_restore(payload):
-        log.info("RESTORE conditions met; clearing MOCK")
-        log.info(_set_mock(False, "auto-restore: spend back below threshold"))
+        log.info("RESTORE conditions met; clearing NO_FETCH")
+        log.info(_set_no_fetch(False, "auto-restore: spend back below threshold"))
         return
 
     log.info("no action: %s", reason)

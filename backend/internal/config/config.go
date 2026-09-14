@@ -21,6 +21,11 @@ type Config struct {
 	GooglePlacesAPIKey string `envconfig:"GOOGLE_PLACES_API_KEY"`
 	Mock               bool   `envconfig:"MOCK" default:"false"`
 
+	// NoFetch is set by the cost kill-switch (infra/killswitch) when spend hits
+	// its cap. Unlike Mock, it never fabricates data: handlers serve stale
+	// cache or an honest "unavailable" response instead of calling Google.
+	NoFetch bool `envconfig:"NO_FETCH" default:"false"`
+
 	// CacheTTL is how long a /nearby result for a given location+filter is
 	// reused before we call Places again.
 	CacheTTL time.Duration `envconfig:"CACHE_TTL" default:"10m"`

@@ -81,6 +81,7 @@ func main() {
 		Quota:          quota.New(cfg.FreeCaps()),
 		IPLimit:        iplimit.New(cfg.IPLimitHour, cfg.IPLimitDay, cfg.IPLimitIPHour, cfg.IPLimitIPDay),
 		Mock:           cfg.Mock,
+		NoFetch:        cfg.NoFetch,
 		AllowedOrigins: cfg.AllowedOrigins,
 		RequireOrigin:  cfg.RequireOrigin,
 		Log:            log,

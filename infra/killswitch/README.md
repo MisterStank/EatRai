@@ -4,13 +4,14 @@ The no-loss guarantee for the Places bill (docs/COST_AND_MONETIZATION_PLAN.md
 Part 7 / Part 13).
 
 ```
-Cloud Billing budget  ──alert──▶  Pub/Sub topic  ──trigger──▶  Cloud Function  ──sets MOCK=true──▶  Cloud Run (eatrai)
+Cloud Billing budget  ──alert──▶  Pub/Sub topic  ──trigger──▶  Cloud Function  ──sets NO_FETCH=true──▶  Cloud Run (eatrai)
 ```
 
 When month-to-date spend crosses the line, the function forces the backend into
-`MOCK=true`. The app keeps working (generated restaurants); Google Places is not
-called again until a human clears it. The cap is set **at or below** pessimistic
-ad revenue, so EatRai cannot run at a loss.
+`NO_FETCH=true`. The app stops calling Google Places and serves real stale cache
+or an honest "unavailable" response instead — it never fabricates data. Recovery
+is a human clearing the flag. The cap is set **at or below** pessimistic ad
+revenue, so EatRai cannot run at a loss.
 
 ## Files
 
@@ -42,7 +43,7 @@ gcloud pubsub topics publish eatrai-budget \
 
 gcloud functions logs read eatrai-killswitch --region asia-southeast1 --gen2 --limit 20
 gcloud run services describe eatrai --region asia-southeast1 \
-  --format='value(spec.template.spec.containers[0].env)'      # expect MOCK=true
+  --format='value(spec.template.spec.containers[0].env)'      # expect NO_FETCH=true
 ```
 
 ## Clear the kill-switch
@@ -50,7 +51,7 @@ gcloud run services describe eatrai --region asia-southeast1 \
 After you've dealt with the cause (raised the budget, fixed a runaway, new month):
 
 ```sh
-gcloud run services update eatrai --region asia-southeast1 --remove-env-vars MOCK
+gcloud run services update eatrai --region asia-southeast1 --remove-env-vars NO_FETCH
 ```
 
 ## Tuning env vars (redeploy or `--update-env-vars`)
@@ -59,7 +60,7 @@ gcloud run services update eatrai --region asia-southeast1 --remove-env-vars MOC
 |---|---|---|
 | `KILL_AT` | `1.0` | trip when a threshold alert ≥ this ratio, or cost/budget ≥ this |
 | `KILL_AT_ABS` | `15` | also trip when month-to-date cost ≥ this absolute amount |
-| `AUTO_RESTORE` | `false` | clear `MOCK` when a later message shows cost back under `RESTORE_BELOW` and no threshold active |
+| `AUTO_RESTORE` | `false` | clear `NO_FETCH` when a later message shows cost back under `RESTORE_BELOW` and no threshold active |
 | `RESTORE_BELOW` | `0.5` | ratio for `AUTO_RESTORE` |
 | `DRY_RUN` | `false` | log the decision, never patch Cloud Run |
 
@@ -68,7 +69,7 @@ gcloud run services update eatrai --region asia-southeast1 --remove-env-vars MOC
 - The function's service account (`eatrai-killswitch@…`) gets `roles/run.admin`
   **on the one service only**, plus `serviceAccountUser` on the service's runtime
   SA so it can roll a new revision. Nothing project-wide.
-- Setting `MOCK=true` deploys a new Cloud Run revision at 100% traffic. The old
+- Setting `NO_FETCH=true` deploys a new Cloud Run revision at 100% traffic. The old
   revision (real key) is untouched and is what you roll back to.
 - Budget data can lag actual spend by a few hours — that's why the budget also
   has a **forecasted-spend** threshold at 120%, and why the cap sits below the

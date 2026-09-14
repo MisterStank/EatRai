@@ -37,7 +37,8 @@ type Server struct {
 	Limiter        *ratelimit.Limiter
 	Quota          *quota.Meter     // nil = unlimited (tests, or FREE_CAP_*=0)
 	IPLimit        *iplimit.Limiter // nil = unlimited (tests)
-	Mock           bool
+	Mock           bool             // dev-only: no Google API key configured. Never true in production.
+	NoFetch        bool             // production cost cap engaged: stop calling Google, but never fabricate data — serve stale cache or an honest error.
 	AllowedOrigins []string // CORS + origin gate; ["*"] disables the gate
 	RequireOrigin  bool
 	Log            *slog.Logger
@@ -72,6 +73,7 @@ func (s *Server) Router() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":       true,
 			"mock":     s.Mock,
+			"noFetch":  s.NoFetch,
 			"cache":    map[string]any{"entries": s.Cache.Len()},
 			"quota":    map[string]any{"counts": counts, "month": month},
 			"iplimit":  map[string]any{"trackedKeys": ipKeys, "degradeHits": ipDegrades},
@@ -214,7 +216,7 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 	base := publicBase(r)
 
 	val, fresh, ok := s.Cache.GetStale(key)
-	quotaOK := !s.Quota.Exceeded("search")
+	quotaOK := !s.Quota.Exceeded("search") && !s.NoFetch
 	// clientMayFetch also *records* the fetch against the per-client budget, so
 	// only call it when we're actually about to (or would like to) hit Google.
 	// A nil IPLimit (tests) always allows.
@@ -245,11 +247,11 @@ func (s *Server) handleNearby(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case !ok && (!quotaOK || !clientMayFetch()) && !s.Mock:
-		// miss + can't fetch (global quota spent, or client over budget):
-		// degrade to mock rather than call Google.
-		cards := places.MockNearby(nearbyQuery(cellLat, cellLng, cuisine, bucket, lang))
-		w.Header().Set("X-EatRai-Degraded", "mock")
-		writeJSON(w, http.StatusOK, map[string]any{"cards": cards})
+		// miss + can't fetch (global quota spent, client over budget, or the cost
+		// kill-switch is engaged): nothing cached for this area yet and we won't
+		// fabricate one — tell the client honestly rather than serve fake places.
+		w.Header().Set("X-EatRai-Degraded", "unavailable")
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "no results cached for this area yet; please try again shortly"})
 		return
 	}
 
@@ -320,7 +322,7 @@ func (s *Server) handlePlace(w http.ResponseWriter, r *http.Request) {
 
 	// Out of Place Details quota: serve a stale copy if we have one rather than
 	// spend a call. (Details barely change, so stale is fine.)
-	if !s.Mock && s.Quota.Exceeded("details") {
+	if !s.Mock && (s.Quota.Exceeded("details") || s.NoFetch) {
 		if ok {
 			w.Header().Set("X-EatRai-Degraded", "stale")
 			writeJSON(w, http.StatusOK, val)
@@ -400,6 +402,11 @@ func (s *Server) handleList(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 		}
+		if s.NoFetch {
+			// cost kill-switch engaged: don't spend on an uncached id, just
+			// omit it — the client shows what resolved, not a fake stand-in.
+			continue
+		}
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(i int, id, key string) {
@@ -447,6 +454,9 @@ func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
 		)
 		if s.Mock {
 			lat, lng, label = places.MockGeocode(placeID)
+		} else if s.NoFetch {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "location lookup is temporarily unavailable"})
+			return
 		} else {
 			lat, lng, label, err = s.Places.PlaceLocation(r.Context(), placeID, token, lang)
 		}
@@ -471,6 +481,9 @@ func (s *Server) handleGeocode(w http.ResponseWriter, r *http.Request) {
 	)
 	if s.Mock {
 		lat, lng, label = places.MockGeocode(q)
+	} else if s.NoFetch {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "location lookup is temporarily unavailable"})
+		return
 	} else {
 		var err error
 		lat, lng, label, err = s.Places.Geocode(r.Context(), q, lang)
@@ -501,6 +514,9 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 	)
 	if s.Mock {
 		sugs = places.MockAutocomplete(q)
+	} else if s.NoFetch {
+		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}})
+		return
 	} else {
 		sugs, err = s.Places.Autocomplete(r.Context(), q, token, lang, lat, lng)
 		if err != nil {
@@ -533,6 +549,9 @@ func (s *Server) handleReverse(w http.ResponseWriter, r *http.Request) {
 	var label string
 	if s.Mock {
 		label = places.MockReverse(lat, lng)
+	} else if s.NoFetch {
+		writeJSON(w, http.StatusOK, map[string]string{"label": ""}) // soft-fail: the pin still works
+		return
 	} else {
 		var err error
 		label, err = s.Places.Reverse(r.Context(), lat, lng, lang)
@@ -563,8 +582,9 @@ func (s *Server) handlePhoto(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no photos in mock mode", http.StatusNotFound)
 		return
 	}
-	if s.Quota.Exceeded("photo") {
-		// Out of Photo quota — let the client fall back to its placeholder.
+	if s.Quota.Exceeded("photo") || s.NoFetch {
+		// Out of Photo quota, or the cost kill-switch is engaged — let the
+		// client fall back to its placeholder.
 		http.Error(w, "photo temporarily unavailable", http.StatusServiceUnavailable)
 		return
 	}

@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/chakkrit/eatrai/internal/places"
 )
 
 // These cover the five /place, /list, /geocode, /suggest, /reverse handlers in
@@ -41,6 +44,56 @@ func TestHandlePlace(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("status = %d, want 400", resp.StatusCode)
+		}
+	})
+}
+
+// TestHandlePlaceUnderNoFetch: with the cost kill-switch engaged (NoFetch), a
+// cached place is served stale (real data, X-EatRai-Degraded: stale) rather
+// than calling Google; an uncached id gets an honest 503, never mock.
+func TestHandlePlaceUnderNoFetch(t *testing.T) {
+	srv := newTestServer(t, 0, []string{"*"}, false)
+	srv.Mock = false // NoFetch (prod cost cap) is distinct from Mock (dev, no API key)
+	srv.NoFetch = true
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	t.Run("cached: serves real stale data", func(t *testing.T) {
+		// normLang("en") normalizes to "" (only "th" is preserved) — the cache
+		// key must match what the handler actually computes. A near-zero TTL
+		// (rather than 0, which falls back to the store's long default) makes
+		// the entry genuinely stale so the NoFetch degrade path is exercised.
+		srv.Cache.SetTTL("place|abc123|", places.Place{Card: places.Card{ID: "abc123", Name: "Old Place"}}, time.Nanosecond)
+		time.Sleep(2 * time.Millisecond)
+
+		resp, err := http.Get(ts.URL + "/place?id=abc123&lang=en")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want 200 (serve real stale data)", resp.StatusCode)
+		}
+		if got := resp.Header.Get("X-EatRai-Degraded"); got != "stale" {
+			t.Fatalf("X-EatRai-Degraded = %q, want %q", got, "stale")
+		}
+		var body places.Place
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Name != "Old Place" {
+			t.Fatalf("expected the real stale place back (not mock), got %+v", body)
+		}
+	})
+
+	t.Run("uncached: honest 503, never mock", func(t *testing.T) {
+		resp, err := http.Get(ts.URL + "/place?id=never-cached&lang=en")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusServiceUnavailable {
+			t.Fatalf("status = %d, want 503 (honest unavailable, never fabricated data)", resp.StatusCode)
 		}
 	})
 }

@@ -151,6 +151,76 @@ func TestNearbyPerClientLimitDegrades(t *testing.T) {
 	}
 }
 
+// TestNearbyServesStaleWhenNoFetch: with the cost kill-switch engaged
+// (NoFetch), an expired cache entry is still served (200) with real stale
+// data and X-EatRai-Degraded: stale — never mock, and no call to Google.
+func TestNearbyServesStaleWhenNoFetch(t *testing.T) {
+	srv := newTestServer(t, 0, []string{"*"}, false)
+	srv.Mock = false // NoFetch (prod cost cap) is distinct from Mock (dev, no API key)
+	srv.NoFetch = true
+
+	const key = "n|13.749,100.500||r5000|"
+	srv.Cache.SetTTL(key, []places.Card{{ID: "stale1", Name: "Old Noodle"}}, time.Nanosecond)
+	time.Sleep(2 * time.Millisecond)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/nearby?lat=13.75&lng=100.5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (serve real stale data, never error when we have it)", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-EatRai-Degraded"); got != "stale" {
+		t.Fatalf("X-EatRai-Degraded = %q, want %q", got, "stale")
+	}
+	var body struct {
+		Cards []places.Card `json:"cards"`
+		Stale bool          `json:"stale"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Cards) != 1 || body.Cards[0].ID != "stale1" || !body.Stale {
+		t.Fatalf("expected the real stale card back (not mock), got %+v", body)
+	}
+}
+
+// TestNearbyCacheMissUnderNoFetchIsHonest: a cache miss for a cell that was
+// never fetched, with NoFetch (cost kill-switch) engaged, must return an
+// honest "unavailable" response — never fabricated mock cards.
+func TestNearbyCacheMissUnderNoFetchIsHonest(t *testing.T) {
+	srv := newTestServer(t, 0, []string{"*"}, false)
+	srv.Mock = false // NoFetch (prod cost cap) is distinct from Mock (dev, no API key)
+	srv.NoFetch = true
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/nearby?lat=13.75&lng=100.5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 (honest unavailable, never fabricated data)", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-EatRai-Degraded"); got != "unavailable" {
+		t.Fatalf("X-EatRai-Degraded = %q, want %q", got, "unavailable")
+	}
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if _, hasCards := body["cards"]; hasCards {
+		t.Fatalf("response must not carry a cards field when unavailable: %v", body)
+	}
+}
+
 // TestNearbyCardsCarryLocation: mock cards expose a Location for the client-side
 // distance computation.
 func TestNearbyCardsCarryLocation(t *testing.T) {
