@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Image } from "expo-image";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   interpolate,
@@ -55,6 +56,15 @@ export function SwipeCard({
   const multi = photos.length > 1;
 
   const step = (dir: 1 | -1) => setPi((n) => (n + dir + photos.length) % photos.length);
+
+  // Warm the cache for the photo the user would land on next, so stepping the
+  // carousel (or swiping to reveal the next card, which mounts at depth 1/2
+  // and starts loading its own photos[0] already) never shows a blank frame.
+  useEffect(() => {
+    if (!isTop || photos.length < 2) return;
+    const next = photos[(idx + 1) % photos.length];
+    if (next) Image.prefetch(next);
+  }, [isTop, idx, photos]);
 
   const tap = Gesture.Tap()
     .enabled(isTop)
@@ -141,7 +151,9 @@ export function SwipeCard({
         <Image
           source={{ uri: isTop ? photos[idx] : photos[0] }}
           style={StyleSheet.absoluteFill}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={150}
+          recyclingKey={isTop ? photos[idx] : photos[0]}
         />
       ) : null}
 

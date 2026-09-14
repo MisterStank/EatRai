@@ -47,6 +47,13 @@ const (
 	// trim the detail gallery 10 -> 5. See docs/COST_AND_MONETIZATION_PLAN.md Part 5.
 	nearbyPhotos = 5
 	detailPhotos = 5
+
+	// nearbyPhotoWidth serves the swipe-card carousel and shared-list thumbnails
+	// (small on-screen); detailPhotoWidth serves the full-bleed detail sheet.
+	// Splitting these cuts the deck's per-photo payload without a visible quality
+	// loss on a phone screen.
+	nearbyPhotoWidth = 500
+	detailPhotoWidth = 1000
 )
 
 // PriceRange is a per-person spend band from Google (e.g. ฿200–400). Nil when
@@ -169,7 +176,7 @@ func (c *Client) GetPlace(ctx context.Context, id, lang, photoBase string, lat, 
 	if err != nil {
 		return Place{}, err
 	}
-	card := p.toCard(lat, lng, photoBase, detailPhotos, langCode(lang))
+	card := p.toCard(lat, lng, photoBase, detailPhotos, detailPhotoWidth, langCode(lang))
 	hours := p.CurrentOpeningHours.WeekdayDescriptions
 	if len(hours) == 0 {
 		hours = p.RegularOpeningHours.WeekdayDescriptions
@@ -191,7 +198,7 @@ func (c *Client) GetPlaceLite(ctx context.Context, id, lang, photoBase string, l
 	if err != nil {
 		return Card{}, err
 	}
-	return p.toCard(lat, lng, photoBase, nearbyPhotos, langCode(lang)), nil
+	return p.toCard(lat, lng, photoBase, nearbyPhotos, nearbyPhotoWidth, langCode(lang)), nil
 }
 
 func (c *Client) placeDetails(ctx context.Context, id, lang, mask string) (apiPlace, error) {
@@ -296,7 +303,7 @@ func (c *Client) searchText(ctx context.Context, textQuery, includedType string,
 	}
 	cards := make([]Card, 0, len(got))
 	for _, p := range got {
-		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, langCode(q.Lang))
+		card := p.toCard(q.Lat, q.Lng, q.PhotoBase, nearbyPhotos, nearbyPhotoWidth, langCode(q.Lang))
 		if int(card.DistanceM) > int(clampRadius(q.RadiusM)) {
 			continue
 		}
@@ -348,7 +355,7 @@ func (c *Client) SearchCuisine(ctx context.Context, cellLat, cellLng float64, cu
 		}
 		seen[p.ID] = true
 		// (0,0) origin -> DistanceM stays 0; Location is set for the client.
-		cards = append(cards, p.toCard(0, 0, photoBase, nearbyPhotos, langCode(lang)))
+		cards = append(cards, p.toCard(0, 0, photoBase, nearbyPhotos, nearbyPhotoWidth, langCode(lang)))
 	}
 	return cards, nil
 }
@@ -785,7 +792,7 @@ type apiPlace struct {
 	EditorialSummary         struct{ Text string } `json:"editorialSummary"`
 }
 
-func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang string) Card {
+func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos, photoWidth int, lang string) Card {
 	c := Card{
 		ID:          p.ID,
 		Name:        p.DisplayName.Text,
@@ -811,7 +818,7 @@ func (p apiPlace) toCard(lat, lng float64, photoBase string, maxPhotos int, lang
 		if i == maxPhotos {
 			break
 		}
-		c.PhotoURLs = append(c.PhotoURLs, photoBase+"/photo?name="+url.QueryEscape(ph.Name)+"&w=1000")
+		c.PhotoURLs = append(c.PhotoURLs, photoBase+"/photo?name="+url.QueryEscape(ph.Name)+"&w="+strconv.Itoa(photoWidth))
 	}
 	return c
 }

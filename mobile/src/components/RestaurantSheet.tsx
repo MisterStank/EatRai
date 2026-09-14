@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { getPlace, type Card, type Place } from "../api/client";
 import { color, font, radius, space } from "../theme/tokens";
@@ -79,7 +79,14 @@ export function RestaurantSheet({
               style={{ height: IMG_H }}
             >
               {(photos.length ? photos : [""]).map((uri, i) => (
-                <Image key={i} source={{ uri }} style={{ width, height: IMG_H, backgroundColor: color.surfaceAlt }} resizeMode="cover" />
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={{ width, height: IMG_H, backgroundColor: color.surfaceAlt }}
+                  contentFit="cover"
+                  transition={150}
+                  recyclingKey={uri}
+                />
               ))}
             </ScrollView>
 
