@@ -45,7 +45,7 @@ describe("AdCard", () => {
     expect(inses(r)).toHaveLength(0);
     expect(r.toJSON()).not.toBeNull();
     expect(r.getByText(/MisterStank/)).toBeTruthy();
-    expect(r.getByText(/eatrai\.help\/support/)).toBeTruthy();
+    expect(r.getByText(/Support the developer/)).toBeTruthy();
   });
 
   test("injects the AdSense script exactly once across multiple mounts", () => {
