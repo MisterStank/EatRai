@@ -66,6 +66,64 @@ describe("support page PromptPay pipeline", () => {
     expect(downloaded.name).toBe("eatrai-promptpay-50baht.png");
   });
 
+  describe("save QR on iOS-style share sheet", () => {
+    const proto = window.HTMLCanvasElement.prototype;
+    let origGet, origBlob, origClick;
+    beforeEach(() => {
+      origGet = proto.getContext;
+      origBlob = proto.toBlob;
+      origClick = window.HTMLAnchorElement.prototype.click;
+      proto.getContext = () => ({ fillRect() {}, set fillStyle(v) {} });
+      proto.toBlob = function (cb) { cb(new window.Blob(["x"], { type: "image/png" })); };
+      window.URL.createObjectURL = () => "blob:mock";
+      window.URL.revokeObjectURL = () => {};
+    });
+    afterEach(() => {
+      proto.getContext = origGet;
+      proto.toBlob = origBlob;
+      window.HTMLAnchorElement.prototype.click = origClick;
+      delete window.navigator.canShare;
+      delete window.navigator.share;
+    });
+
+    test("uses navigator.share with a PNG file instead of a download link", () => {
+      setup("en");
+      const shared = [];
+      window.navigator.canShare = () => true;
+      window.navigator.share = (d) => { shared.push(d); return Promise.resolve(); };
+      let clicked = false;
+      window.HTMLAnchorElement.prototype.click = () => { clicked = true; };
+      document.querySelector('[data-amt="50"]').click();
+      document.getElementById("saveqr").click();
+      expect(shared).toHaveLength(1);
+      expect(shared[0].files[0].name).toBe("eatrai-promptpay-50baht.png");
+      expect(shared[0].files[0].type).toBe("image/png");
+      expect(clicked).toBe(false);
+    });
+
+    test("falls back to a download when files cannot be shared", () => {
+      setup("en");
+      window.navigator.canShare = () => false;
+      window.navigator.share = () => { throw new Error("should not be called"); };
+      let name = null;
+      window.HTMLAnchorElement.prototype.click = function () { name = this.getAttribute("download"); };
+      document.getElementById("saveqr").click();
+      expect(name).toBe("eatrai-promptpay.png");
+    });
+
+    test("a cancelled share sheet does not trigger a download", async () => {
+      setup("en");
+      window.navigator.canShare = () => true;
+      window.navigator.share = () => Promise.reject(Object.assign(new Error("x"), { name: "AbortError" }));
+      let clicked = false;
+      window.HTMLAnchorElement.prototype.click = () => { clicked = true; };
+      document.getElementById("saveqr").click();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(clicked).toBe(false);
+    });
+  });
+
   test("custom amount out of range falls back to an amountless QR", () => {
     setup("en");
     const input = document.getElementById("custom");

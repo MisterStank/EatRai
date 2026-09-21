@@ -63,15 +63,16 @@
     if (saveBtn) saveBtn.hidden = false; // still lets the visitor save the fallback image
   }
 
-  function saveImage() {
-    var link = document.createElement("a");
-    if (!current) {
-      link.href = "/support/promptpay.jpg";
-      link.download = "eatrai-promptpay.jpg";
-      link.click();
-      return;
-    }
-    var name = "eatrai-promptpay" + (amount ? "-" + amount + "baht" : "") + ".png";
+  // Build the PNG at render time, not on click: iOS Safari only opens the share
+  // sheet inside the tap's user-activation window, and an async toBlob() in the
+  // click handler can outlive it.
+  var pngBlob = null;
+  var pngName = "eatrai-promptpay.png";
+
+  function buildPng() {
+    pngBlob = null;
+    if (!current) return;
+    pngName = "eatrai-promptpay" + (amount ? "-" + amount + "baht" : "") + ".png";
     var n = current.getModuleCount();
     var scale = 12;
     var quiet = 4;
@@ -80,13 +81,7 @@
     canvas.width = canvas.height = size;
     var ctx;
     try { ctx = canvas.getContext && canvas.getContext("2d"); } catch (e) { ctx = null; }
-    if (!ctx) {
-      // no canvas support — fall back to the on-screen (smaller) QR image
-      link.href = current.createDataURL(8, quiet);
-      link.download = name;
-      link.click();
-      return;
-    }
+    if (!ctx || !canvas.toBlob) return; // saveImage falls back to the data URL
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, size, size);
     ctx.fillStyle = "#000000";
@@ -97,20 +92,43 @@
         }
       }
     }
-    var done = function (href, revoke) {
-      link.href = href;
-      link.download = name;
-      link.click();
-      if (revoke) setTimeout(function () { URL.revokeObjectURL(href); }, 1000);
-    };
-    if (canvas.toBlob) {
-      canvas.toBlob(function (blob) {
-        if (blob) done(URL.createObjectURL(blob), true);
-        else done(canvas.toDataURL("image/png"), false);
-      }, "image/png");
-    } else {
-      done(canvas.toDataURL("image/png"), false);
+    var mine = current;
+    canvas.toBlob(function (blob) {
+      if (mine === current) pngBlob = blob; // ignore a stale render
+    }, "image/png");
+  }
+
+  function download(href, name, revoke) {
+    var link = document.createElement("a");
+    link.href = href;
+    link.download = name;
+    link.click();
+    if (revoke) setTimeout(function () { URL.revokeObjectURL(href); }, 1000);
+  }
+
+  function saveImage() {
+    if (!current) {
+      download("/support/promptpay.jpg", "eatrai-promptpay.jpg", false);
+      return;
     }
+    if (!pngBlob) {
+      // no canvas support — fall back to the on-screen (smaller) QR image
+      download(current.createDataURL(8, 4), pngName, false);
+      return;
+    }
+    var blob = pngBlob;
+    var name = pngName;
+    // A download link lands in the Files app on iOS. The share sheet offers
+    // "Save Image", which goes straight to Photos.
+    var file = null;
+    try { file = new File([blob], name, { type: "image/png" }); } catch (e) {}
+    if (file && navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(function (err) {
+        if (!err || err.name !== "AbortError") download(URL.createObjectURL(blob), name, true);
+      });
+      return;
+    }
+    download(URL.createObjectURL(blob), name, true);
   }
 
   if (saveBtn) saveBtn.addEventListener("click", saveImage);
@@ -136,6 +154,7 @@
       qrimg.hidden = false;
       if (fallback) fallback.hidden = true;
       current = q;
+      buildPng();
       if (saveBtn) saveBtn.hidden = false;
     } catch (e) {
       showFallback();

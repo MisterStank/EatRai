@@ -39,22 +39,44 @@ h2{font-size:19px;margin:0 0 6px;font-weight:600}
 .langbar button:first-child{border-radius:999px 0 0 999px}
 .langbar button:last-child{border-radius:0 999px 999px 0;border-left:0}
 .langbar button[aria-pressed="true"]{background:#17140F;color:#fff;border-color:#17140F}
-.qr{width:264px;max-width:74vw;height:auto;margin:0 auto;background:#fff;border:1px solid #E8E0D3;border-radius:16px;padding:16px}
-.qr img{display:block;width:100%;height:auto;image-rendering:pixelated}
+.hero{margin:0 auto;max-width:400px;background:#fff;border:1px solid #E8E0D3;border-radius:26px;padding:22px 20px 20px;box-shadow:0 1px 0 #fff inset,0 18px 40px -22px rgba(23,20,15,.28)}
+.qr{width:248px;max-width:100%;margin:0 auto;background:#fff;border:1px solid #E8E0D3;border-radius:18px;padding:12px}
+.qr img{display:block;width:100%;height:auto;image-rendering:pixelated;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
 .qr img[hidden]{display:none}
-.give{font-weight:600;margin:14px 0 4px;font-size:17px}
-.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:16px 0 0}
-.chips button{font:inherit;font-size:15px;border:1px solid #E8E0D3;background:#fff;color:#17140F;border-radius:999px;padding:8px 18px;cursor:pointer}
+.give{font-family:"Kanit",sans-serif;font-weight:600;margin:16px 0 2px;font-size:20px}
+.trust{color:#6B6358;font-size:13px;margin:0 0 4px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:18px 0 0}
+.chips button{font:inherit;font-weight:600;font-size:16px;min-height:48px;border:1.5px solid #E8E0D3;background:#FBF7F0;color:#17140F;border-radius:14px;padding:6px 4px;cursor:pointer;transition:transform .08s,background .12s}
+.chips button:active{transform:scale(.97)}
+.chips button[data-amt=""]{font-size:13px;font-weight:500}
 .chips button[aria-pressed="true"]{background:#FF5A1F;border-color:#FF5A1F;color:#fff}
-.custom{margin:12px 0 0}
-.custom input{font:inherit;font-size:15px;width:150px;text-align:center;border:1px solid #E8E0D3;border-radius:999px;padding:8px 14px;background:#fff}
-.save{display:inline-flex;align-items:center;gap:7px;margin:14px 0 0;font:inherit;font-size:14px;border:1px solid #E8E0D3;background:#fff;color:#17140F;border-radius:999px;padding:8px 20px;cursor:pointer}
-.save:hover{background:#F1EBDF}
+.custom{margin:10px 0 0}
+.custom input{font:inherit;font-size:16px;width:100%;text-align:center;border:1.5px solid #E8E0D3;border-radius:14px;padding:12px 14px;background:#FBF7F0;min-height:48px}
+.custom input:focus{outline:2px solid #FF5A1F;outline-offset:1px;background:#fff}
+.save{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;margin:16px 0 0;font:inherit;font-size:16px;font-weight:600;border:0;background:#17140F;color:#fff;border-radius:14px;padding:12px 20px;cursor:pointer}
+.save:hover{background:#2b261e}
+.save:active{transform:scale(.99)}
+.save[hidden]{display:none}
 .save .dl{flex:none}
-.hint{color:#9A9084;font-size:13px;margin:14px 0 0}
-.about{margin:36px 0 0;padding:20px;background:#fff;border:1px solid #E8E0D3;border-radius:16px;text-align:left}
-.about p{margin:0 0 10px;font-size:15px;color:#17140F}
-.about .links a{margin-right:14px;font-size:14px;white-space:nowrap}
+.hint{color:#9A9084;font-size:13px;margin:12px 0 0}
+.steps{list-style:none;counter-reset:s;margin:22px auto 0;padding:0;max-width:400px;text-align:left}
+.steps li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;font-size:14px;color:#6B6358;padding:6px 0}
+.steps li::before{content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:#F1EBDF;color:#17140F;font-weight:700;font-size:13px;display:grid;place-items:center;margin-top:1px}
+.titlerow{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 8px}
+.titlerow h1{margin:0}
+.info{flex:none;display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #E8E0D3;background:#fff;color:#6B6358;border-radius:50%;cursor:pointer}
+.info:hover{background:#F1EBDF}
+.info:focus-visible,.dclose:focus-visible{outline:2px solid #FF5A1F;outline-offset:2px}
+dialog.about{width:min(420px,calc(100vw - 32px));padding:20px;border:1px solid #E8E0D3;border-radius:22px;background:#fff;color:#17140F;text-align:left;box-shadow:0 24px 60px -20px rgba(23,20,15,.45)}
+dialog.about::backdrop{background:rgba(23,20,15,.45)}
+.about-head{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.avatar{flex:none;width:44px;height:44px;border-radius:50%;background:#FF5A1F;color:#fff;display:grid;place-items:center;font-family:"Kanit",sans-serif;font-weight:700;font-size:16px}
+.about h2{margin:0;font-size:17px;flex:1}
+.dclose{flex:none;width:32px;height:32px;border:0;background:#F1EBDF;color:#17140F;border-radius:50%;font-size:18px;line-height:1;cursor:pointer}
+.about p{margin:0 0 12px;font-size:15px;color:#17140F}
+.about .links{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.about .links a{display:inline-flex;align-items:center;font-size:13px;font-weight:600;text-decoration:none;color:#17140F;border:1px solid #E8E0D3;background:#FBF7F0;border-radius:999px;padding:6px 14px;min-height:32px}
+.about .links a:hover{background:#F1EBDF}
 hr{border:0;border-top:1px solid #E8E0D3;margin:36px 0}
 a{color:#FF5A1F}
 footer{margin-top:36px}
@@ -78,12 +100,19 @@ html[data-lang="th"] .lang-en{display:none}
   </span>
 </div>
 
-<h1><span class="lang-en" lang="en">Support the developer</span><span class="lang-th" lang="th">สนับสนุนผู้พัฒนา</span></h1>
+<div class="titlerow">
+  <h1><span class="lang-en" lang="en">Support the developer</span><span class="lang-th" lang="th">สนับสนุนผู้พัฒนา</span></h1>
+  <button type="button" class="info" id="infobtn" aria-haspopup="dialog" aria-controls="about">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.3" fill="currentColor"/></svg>
+    <span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"><span class="lang-en" lang="en">Who you're supporting</span><span class="lang-th" lang="th">คุณกำลังสนับสนุนใคร</span></span>
+  </button>
+</div>
 <p class="lede">
   <span class="lang-en" lang="en">Thanks for helping keep EatRai running, so it can keep helping you find a place you want to eat.</span>
   <span class="lang-th" lang="th">ขอบคุณที่ช่วยสนับสนุนให้ EatRai ช่วยคุณเลือกร้านที่อยากรับประทานต่อไปได้</span>
 </p>
 
+<section class="hero">
 <div class="qr">
   <img id="qrimg" alt="PromptPay QR code for donating to EatRai" hidden>
   <img id="qrfallback" src="/support/promptpay.jpg" alt="PromptPay QR code for donating to EatRai" hidden>
@@ -91,6 +120,10 @@ html[data-lang="th"] .lang-en{display:none}
 </div>
 
 <p class="give" id="give" hidden></p>
+<p class="trust">
+  <span class="lang-en" lang="en">One-time · no account · goes to the running costs</span>
+  <span class="lang-th" lang="th">ครั้งเดียว · ไม่ต้องสมัคร · ช่วยค่าใช้จ่ายของแอป</span>
+</p>
 
 <div class="chips" id="chips">
   <button type="button" data-amt="20">฿20</button>
@@ -105,19 +138,34 @@ html[data-lang="th"] .lang-en{display:none}
 </div>
 
 <button type="button" id="saveqr" class="save" hidden>
-  <svg class="dl" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+  <svg class="dl" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
     <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
           d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
   </svg><span class="lang-en" lang="en">Save QR image</span><span class="lang-th" lang="th">บันทึกรูป QR</span>
 </button>
+</section>
 
-<p class="hint">
-  <span class="lang-en" lang="en">Scan with any Thai banking app · your app shows the amount before you confirm.</span>
-  <span class="lang-th" lang="th">สแกนด้วยแอปธนาคารใดก็ได้ · แอปจะแสดงยอดให้ตรวจก่อนยืนยัน</span>
-</p>
+<ol class="steps">
+  <li>
+    <span class="lang-en" lang="en">Save the QR (or press and hold it, then choose <strong>Add to Photos</strong>).</span>
+    <span class="lang-th" lang="th">บันทึกรูป QR (หรือกดค้างที่รูป แล้วเลือก <strong>เพิ่มไปยังรูปภาพ</strong>)</span>
+  </li>
+  <li>
+    <span class="lang-en" lang="en">Open your banking app and choose Scan, then pick the image from your photos.</span>
+    <span class="lang-th" lang="th">เปิดแอปธนาคาร เลือกสแกน แล้วเลือกรูปจากอัลบั้ม</span>
+  </li>
+  <li>
+    <span class="lang-en" lang="en">Check the amount on screen and confirm. Thank you!</span>
+    <span class="lang-th" lang="th">ตรวจยอดบนหน้าจอแล้วกดยืนยัน ขอบคุณครับ</span>
+  </li>
+</ol>
 
-<div class="about">
-  <h2><span class="lang-en" lang="en">Who you're supporting</span><span class="lang-th" lang="th">คุณกำลังสนับสนุนใคร</span></h2>
+<dialog class="about" id="about" aria-labelledby="abouttitle">
+  <div class="about-head">
+    <span class="avatar" aria-hidden="true">CJ</span>
+    <h2 id="abouttitle"><span class="lang-en" lang="en">Who you're supporting</span><span class="lang-th" lang="th">คุณกำลังสนับสนุนใคร</span></h2>
+    <button type="button" class="dclose" id="aboutclose" aria-label="Close">✕</button>
+  </div>
   <p>
     <span class="lang-en" lang="en"><strong>Chakkrit Jongkraijak</strong> — full-stack developer. I built EatRai to settle the "where do we eat?" argument. Donations go straight to the Google Maps API bill that keeps it running.</span>
     <span class="lang-th" lang="th"><strong>จักรกฤษณ์ จงไกรจักร</strong> — นักพัฒนาเว็บ ทำ EatRai ขึ้นมาเพื่อจบปัญหาโลกแตก "จะกินอะไรดี" เงินบริจาคเอาไปจ่ายค่า Google Maps API ที่ทำให้แอปทำงานต่อได้ทั้งหมด</span>
@@ -127,7 +175,7 @@ html[data-lang="th"] .lang-en{display:none}
     <a href="https://github.com/MisterStank" target="_blank" rel="noopener">GitHub</a>
     <a href="https://www.linkedin.com/in/chakkrit-jongkraijak/" target="_blank" rel="noopener">LinkedIn</a>
   </p>
-</div>
+</dialog>
 
 <footer>
 <a href="/">EatRai</a>
@@ -141,5 +189,6 @@ html[data-lang="th"] .lang-en{display:none}
 <script src="/lang-toggle.js" defer></script>
 <script src="/support/qr.js" defer></script>
 <script src="/support/promptpay.js" defer></script>
+<script src="/support/info.js" defer></script>
 </body>
 </html>
