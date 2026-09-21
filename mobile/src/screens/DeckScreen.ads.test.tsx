@@ -140,7 +140,7 @@ describe("DeckScreen — ads", () => {
     });
 
     fireEvent.press(getByLabelText("Support the developer"));
-    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support");
+    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support", { sameTab: true });
   }, 60000);
 
   test('the "Support the developer" menu row opens the /support page', async () => {
@@ -156,6 +156,6 @@ describe("DeckScreen — ads", () => {
     });
     fireEvent.press(getByText("Support the developer"));
 
-    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support");
+    expect(mockOpenExternal).toHaveBeenCalledWith("https://eatrai.help/support", { sameTab: true });
   }, 60000);
 });

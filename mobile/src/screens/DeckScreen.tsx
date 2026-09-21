@@ -302,7 +302,7 @@ export function DeckScreen() {
     if (currentIsAd) {
       // the ad card has no restaurant to navigate to — reuse the slot to point
       // at the other way to support the app (see docs Part 11.6 grilling notes)
-      openExternal("https://eatrai.help/support");
+      openExternal("https://eatrai.help/support", { sameTab: true });
       return;
     }
     if (activeCard) openExternal(activeCard.mapsUri);
@@ -395,7 +395,7 @@ export function DeckScreen() {
           onFilter={() => setShowFilters(true)}
           onHelp={() => setShowHelp(true)}
           onFeedback={() => setShowFeedback(true)}
-          onSupport={() => openExternal("https://eatrai.help/support")}
+          onSupport={() => openExternal("https://eatrai.help/support", { sameTab: true })}
           onLegal={() => openExternal("https://eatrai.help/privacy")}
         />
 
