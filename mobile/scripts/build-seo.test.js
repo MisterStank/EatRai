@@ -1,5 +1,15 @@
-const { esc, shouldGenerate, areaPath, sitemapXml, priceText, pageHtml, shouldRunOnThisDeploy } =
-  require("./build-seo.js");
+const {
+  esc,
+  shouldGenerate,
+  areaPath,
+  sitemapXml,
+  priceText,
+  pageHtml,
+  shouldRunOnThisDeploy,
+  homeSnapshotHtml,
+  FALLBACK_BOT_HOME_HTML,
+  BOT_HOME_PATH,
+} = require("./build-seo.js");
 
 const area = { slug: "thonglor", en: "Thong Lo", th: "ทองหล่อ", lat: 13.7295, lng: 100.5817, metro: "bangkok" };
 const card = (over = {}) => ({
@@ -106,4 +116,51 @@ describe("shouldRunOnThisDeploy — skip preview builds to avoid burning real Pl
       true,
     );
   });
+});
+
+// The bot-facing "/" snapshot middleware.js rewrites to for
+// Mediapartners-Google / Googlebot / AdsBot-Google — see docs/... AdSense fix
+// notes. Real users never see this file; it exists so a crawler that doesn't
+// execute client JS still finds real content instead of an empty <div id="root">.
+describe("homeSnapshotHtml — bot-facing '/' snapshot", () => {
+  const metros = [
+    { slug: "bangkok", en: "Bangkok", th: "กรุงเทพฯ" },
+    { slug: "chiang-mai", en: "Chiang Mai", th: "เชียงใหม่" },
+  ];
+  const cards = Array.from({ length: 10 }, (_, i) => card({ name: `Place ${i}` }));
+  const html = homeSnapshotHtml({ cards, metros });
+
+  test("canonical is the bare homepage, not a /near/* URL", () => {
+    expect(html).toContain('<link rel="canonical" href="https://eatrai.help/">');
+  });
+
+  test("renders every card", () => {
+    expect(html).toContain("Place 0");
+    expect(html).toContain("Place 9");
+    const m = html.match(/<script type="application\/ld\+json">(.+?)<\/script>/s);
+    expect(JSON.parse(m[1]).itemListElement).toHaveLength(10);
+  });
+
+  test("links to the other covered cities, not itself", () => {
+    expect(html).toContain('href="/near/chiang-mai"');
+    expect(html).not.toContain('href="/near/bangkok"');
+  });
+
+  test("footer links to about/support/privacy/terms/contact", () => {
+    for (const p of ["about", "support", "privacy", "terms", "contact"]) {
+      expect(html).toContain(`href="https://eatrai.help/${p}"`);
+    }
+  });
+});
+
+describe("FALLBACK_BOT_HOME_HTML — used when the Bangkok fetch fails/is too thin", () => {
+  test("always has a canonical and real description text, no API dependency", () => {
+    expect(FALLBACK_BOT_HOME_HTML).toContain('<link rel="canonical" href="https://eatrai.help/">');
+    expect(FALLBACK_BOT_HOME_HTML).toContain("swipe your way to dinner");
+    expect(FALLBACK_BOT_HOME_HTML).toContain("ปัดเลือกร้านอาหารใกล้คุณ");
+  });
+});
+
+test("BOT_HOME_PATH matches what middleware.js rewrites to", () => {
+  expect(BOT_HOME_PATH).toBe("_bot/home.html");
 });

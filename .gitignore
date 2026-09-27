@@ -15,6 +15,7 @@ mobile/coverage/
 mobile/public/near/
 mobile/public/th/
 mobile/public/sitemap.xml
+mobile/public/_bot/
 
 # go coverage output
 *.out

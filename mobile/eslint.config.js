@@ -50,4 +50,14 @@ module.exports = [
     files: ['scripts/**/*.test.js'],
     languageOptions: { globals: JEST },
   },
+  {
+    // Vercel Edge Middleware — root-level, ESM, Vercel's own runtime (not the
+    // Expo app bundle, not plain Node).
+    files: ['middleware.js'],
+    languageOptions: { sourceType: 'module', globals: NODE },
+  },
+  {
+    files: ['middleware.test.js'],
+    languageOptions: { sourceType: 'commonjs', globals: { ...NODE, ...JEST } },
+  },
 ];

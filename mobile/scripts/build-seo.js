@@ -114,6 +114,34 @@ function jsonLd(area, lang, cards) {
   });
 }
 
+// A single restaurant card, shared by the per-area pages and the bot-facing
+// home snapshot (see homeSnapshotHtml) so both render listings identically.
+function cardListItem(c, i, isTh) {
+  return `
+      <li class="card">
+        ${
+          c.photoUrls && c.photoUrls[0]
+            ? `<img class="thumb" src="${esc(c.photoUrls[0].replace(/([?&])w=\d+/, "$1w=400"))}" alt="${esc(c.name)}" loading="lazy" width="400" height="300">`
+            : `<div class="thumb noimg"></div>`
+        }
+        <div class="meta">
+          <h2>${i + 1}. ${esc(c.name)}</h2>
+          <p class="sub">${[
+            c.rating > 0
+              ? `★ ${Number(c.rating).toFixed(1)}${c.ratingCount ? ` (${Number(c.ratingCount).toLocaleString(isTh ? "th-TH" : "en-US")})` : ""}`
+              : "",
+            priceText(c),
+            (c.cuisines || []).slice(0, 3).join(" · "),
+          ]
+            .filter(Boolean)
+            .map(esc)
+            .join("  ·  ")}</p>
+          ${c.address ? `<p class="addr">${esc(c.address)}</p>` : ""}
+          ${c.mapsUri ? `<a class="maps" href="${esc(c.mapsUri)}" target="_blank" rel="noopener">${isTh ? "ดูใน Google Maps" : "View on Google Maps"} →</a>` : ""}
+        </div>
+      </li>`;
+}
+
 function pageHtml({ area, lang, cards, siblings }) {
   const isTh = lang === "th";
   const name = (isTh && area.th) || area.en;
@@ -140,29 +168,7 @@ function pageHtml({ area, lang, cards, siblings }) {
 
   const appLink = `${SITE}/?lat=${area.lat}&lng=${area.lng}&area=${encodeURIComponent(name)}`;
 
-  const listing = (c, i) => `
-      <li class="card">
-        ${
-          c.photoUrls && c.photoUrls[0]
-            ? `<img class="thumb" src="${esc(c.photoUrls[0].replace(/([?&])w=\d+/, "$1w=400"))}" alt="${esc(c.name)}" loading="lazy" width="400" height="300">`
-            : `<div class="thumb noimg"></div>`
-        }
-        <div class="meta">
-          <h2>${i + 1}. ${esc(c.name)}</h2>
-          <p class="sub">${[
-            c.rating > 0
-              ? `★ ${Number(c.rating).toFixed(1)}${c.ratingCount ? ` (${Number(c.ratingCount).toLocaleString(isTh ? "th-TH" : "en-US")})` : ""}`
-              : "",
-            priceText(c),
-            (c.cuisines || []).slice(0, 3).join(" · "),
-          ]
-            .filter(Boolean)
-            .map(esc)
-            .join("  ·  ")}</p>
-          ${c.address ? `<p class="addr">${esc(c.address)}</p>` : ""}
-          ${c.mapsUri ? `<a class="maps" href="${esc(c.mapsUri)}" target="_blank" rel="noopener">${isTh ? "ดูใน Google Maps" : "View on Google Maps"} →</a>` : ""}
-        </div>
-      </li>`;
+  const listing = (c, i) => cardListItem(c, i, isTh);
 
   const siblingLinks = siblings
     .filter((s) => s.slug !== area.slug)
@@ -249,6 +255,135 @@ ${ad}
 `;
 }
 
+// ------------------------------------------------------------- bot snapshot
+//
+// eatrai.help/ itself is a plain client-rendered app (no SSR, no
+// expo-router) — its initial HTML is just `<div id="root">`, empty until JS
+// mounts. AdSense's own crawler (Mediapartners-Google) doesn't reliably
+// render client JS, and reportedly neither always does Googlebot/AdsBot on
+// the first pass, so a bot fetching "/" can see nothing. Real users always
+// get the actual swipe app unchanged — see mobile/middleware.js, which
+// rewrites just those three bot user agents on path "/" to this file.
+// Bangkok is the representative example: it already has the deepest,
+// most-reviewed dataset of any covered city.
+const BOT_HOME_PATH = "_bot/home.html";
+
+function homeSnapshotHtml({ cards, metros }) {
+  const canonical = `${SITE}/`;
+  const titleTh = "EatRai — ปัดเลือกร้านอาหารใกล้คุณ";
+  const descEn =
+    "Real nearby restaurants, one swipe at a time — rating, price, distance, hours, and photos pulled live from Google Places. No accounts, no app to install.";
+  const descTh =
+    "ปัดเลือกร้านอาหารใกล้คุณ ดูคะแนน ราคา ระยะทาง เวลาเปิด และรูปภาพแบบเรียลไทม์จาก Google Places ไม่ต้องสมัครสมาชิก ไม่ต้องติดตั้งแอป";
+
+  const adSenseMeta = ADSENSE_CLIENT
+    ? `<meta name="google-adsense-account" content="${esc(ADSENSE_CLIENT)}">`
+    : "";
+
+  const otherCities = metros
+    .filter((m) => m.slug !== "bangkok")
+    .map((m) => `<a href="${areaPath(m.slug, "en")}">${esc(m.en)}</a>`)
+    .join("");
+
+  return `<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(titleTh)}</title>
+<meta name="description" content="${esc(descTh)}">
+<link rel="canonical" href="${canonical}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(titleTh)}">
+<meta property="og:description" content="${esc(descTh)}">
+<meta property="og:url" content="${canonical}">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+${adSenseMeta}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">${jsonLd({ slug: "bangkok", en: "Bangkok", th: "กรุงเทพฯ" }, "th", cards)}</script>
+<style>
+:root{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.55 "Anuphan",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+h1,h2,.cta{font-family:"Kanit",sans-serif}
+a{color:#FF5A1F}
+header,main,footer{max-width:720px;margin:0 auto;padding:0 20px}
+header{padding-top:32px}
+h1{font-size:26px;line-height:1.25;margin:0 0 8px;font-weight:700}
+.lede{color:#6B6358;margin:0 0 20px}
+.cta{display:inline-block;background:#FF5A1F;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;margin:4px 0 24px}
+ul{list-style:none;padding:0;margin:0}
+.card{display:flex;gap:14px;background:#fff;border:1px solid #E8E0D3;border-radius:14px;padding:12px;margin:12px 0}
+.thumb{width:120px;height:90px;object-fit:cover;border-radius:10px;flex:none;background:#E8E0D3}
+.thumb.noimg{background:linear-gradient(135deg,#FFC24B,#FF5A1F)}
+.meta{min-width:0}
+h2{font-size:17px;margin:2px 0 4px}
+.sub{margin:0 0 4px;color:#6B6358;font-size:14px}
+.addr{margin:0 0 6px;color:#9A9084;font-size:13px}
+.maps{font-size:13px;font-weight:600;text-decoration:none}
+.cities{margin:28px 0 8px;line-height:2}
+.cities a{display:inline-block;margin-right:10px;font-size:14px}
+footer{padding:24px 20px 48px;color:#9A9084;font-size:13px;border-top:1px solid #E8E0D3;margin-top:32px}
+footer a{color:#9A9084;margin-right:14px}
+@media(max-width:480px){.thumb{width:92px;height:78px}}
+</style>
+</head>
+<body>
+<header>
+<h1>${esc(titleTh)}</h1>
+<p class="lede">${esc(descTh)}</p>
+<p class="lede">${esc(descEn)}</p>
+</header>
+<main>
+<h2>${esc(`ตัวอย่างจริงจากกรุงเทพฯ วันนี้ (Live example from Bangkok today)`)}</h2>
+<ul>${cards.map((c, i) => cardListItem(c, i, true)).join("")}</ul>
+<nav class="cities">${esc("เมืองอื่นที่ EatRai ใช้งานได้ (also available in): ")}${otherCities}</nav>
+</main>
+<footer>
+<a href="${SITE}/about">About / เกี่ยวกับเรา</a>
+<a href="${SITE}/support">Support / สนับสนุนผู้พัฒนา</a>
+<a href="${SITE}/privacy">Privacy / ความเป็นส่วนตัว</a>
+<a href="${SITE}/terms">Terms / เงื่อนไข</a>
+<a href="${SITE}/contact">Contact / ติดต่อเรา</a>
+</footer>
+</body>
+</html>
+`;
+}
+
+// Hardcoded, dependency-free fallback for when the Bangkok fetch fails or
+// comes back too thin (see main()) — bots must never see an empty shell,
+// even on a Places API hiccup. No listings, just the same real description
+// used site-wide (mirrors public/about/index.html).
+const FALLBACK_BOT_HOME_HTML = `<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EatRai — ปัดเลือกร้านอาหารใกล้คุณ</title>
+<meta name="description" content="ปัดเลือกร้านอาหารใกล้คุณ ตัดสินใจไวว่าจะกินไรดี ไม่ต้องเถียงกันอีกต่อไป">
+<link rel="canonical" href="${SITE}/">
+${ADSENSE_CLIENT ? `<meta name="google-adsense-account" content="${esc(ADSENSE_CLIENT)}">` : ""}
+<style>
+body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#FBF7F0;color:#17140F}
+main{max-width:680px;margin:0 auto;padding:32px 22px 64px}
+h1{font-size:24px;margin:0 0 12px}
+a{color:#FF5A1F}
+</style>
+</head>
+<body>
+<main>
+<h1>EatRai — ปัดเลือกร้านอาหารใกล้คุณ / swipe your way to dinner</h1>
+<p>เวลาชวนกันไปกินข้าวแล้วตกลงกันไม่ได้ว่าจะไปร้านไหน มักใช้เวลานานกว่ามื้ออาหารจริงเสียอีก EatRai แสดงร้านอาหารใกล้ตัวจริงให้ทีละร้าน พร้อมคะแนน ราคา ระยะทาง เวลาเปิด และรูปภาพ ดึงข้อมูลสดจาก Google Places ไม่มีระบบสมัครสมาชิก ไม่ต้องติดตั้งแอป</p>
+<p>Deciding where to eat with other people usually takes longer than the meal itself. EatRai shows real nearby restaurants one at a time — rating, price, distance, hours, and photos pulled live from Google Places. No accounts, no app to install.</p>
+<p><a href="${SITE}/about">About</a> · <a href="${SITE}/support">Support</a> · <a href="${SITE}/privacy">Privacy</a> · <a href="${SITE}/terms">Terms</a> · <a href="${SITE}/contact">Contact</a></p>
+</main>
+</body>
+</html>
+`;
+
 // ---------------------------------------------------------------------- I/O
 
 async function fetchCards(lat, lng, lang) {
@@ -267,7 +402,19 @@ async function fetchCards(lat, lng, lang) {
   }
 }
 
+// Writes the bot-facing "/" snapshot middleware.js rewrites to (see
+// BOT_HOME_PATH). Called unconditionally, before the preview-build early
+// return below, so the file exists on every deploy — a bot hitting a preview
+// URL still gets the (possibly stale, always non-empty) fallback rather than
+// a 404.
+async function writeBotHome(html) {
+  await mkdir(path.join(PUBLIC, "_bot"), { recursive: true });
+  await writeFile(path.join(PUBLIC, BOT_HOME_PATH), html);
+}
+
 async function main() {
+  await writeBotHome(FALLBACK_BOT_HOME_HTML);
+
   if (!shouldRunOnThisDeploy(process.env)) {
     console.log(
       `SEO: skipping (VERCEL_ENV=${process.env.VERCEL_ENV || "-"}) — only runs on production deploys, local, or FORCE_SEO_BUILD=1. This avoids spending real Google Places calls on every preview build.`,
@@ -290,6 +437,7 @@ async function main() {
 
   const written = [];
   let skipped = 0;
+  let bangkokThCards = null; // reused for the bot home snapshot below — no extra API call
 
   for (const area of all) {
     const siblings =
@@ -304,6 +452,8 @@ async function main() {
         .sort((a, b) => rankScore(b) - rankScore(a))
         .slice(0, take);
 
+      if (area.slug === "bangkok" && lang === "th") bangkokThCards = cards;
+
       if (!shouldGenerate(cards, min)) {
         skipped++;
         console.log(`  skip  ${areaPath(area.slug, lang)} (${cards.length} < ${min})`);
@@ -316,6 +466,13 @@ async function main() {
       written.push(areaPath(area.slug, lang));
       console.log(`  write ${areaPath(area.slug, lang)} (${cards.length})`);
     }
+  }
+
+  if (bangkokThCards && shouldGenerate(bangkokThCards, min)) {
+    await writeBotHome(homeSnapshotHtml({ cards: bangkokThCards, metros: cfg.metros }));
+    console.log(`  write ${BOT_HOME_PATH} (${bangkokThCards.length} Bangkok cards)`);
+  } else {
+    console.log(`  keep  ${BOT_HOME_PATH} fallback (Bangkok fetch too thin or failed)`);
   }
 
   const staticPages = ["/about", "/privacy", "/terms", "/support", "/contact"];
@@ -332,6 +489,9 @@ module.exports = {
   sitemapXml,
   pageHtml,
   shouldRunOnThisDeploy,
+  homeSnapshotHtml,
+  FALLBACK_BOT_HOME_HTML,
+  BOT_HOME_PATH,
 };
 
 if (require.main === module) {
