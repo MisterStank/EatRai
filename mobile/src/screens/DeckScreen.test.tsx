@@ -153,6 +153,47 @@ describe("DeckScreen", () => {
     expect(queryByText(/outside those/i)).toBeNull();
   }, 30000);
 
+  // A brand-new visitor who hasn't granted location yet (no coords ever
+  // obtained) is the one screen state guaranteed to be seen with zero
+  // interaction — including, plausibly, an AdSense reviewer's clean browser
+  // profile. It must carry real explanatory text, not just the bare
+  // permission-request line.
+  test("first load with no location permission shows real explanatory text, not just the permission prompt", async () => {
+    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValueOnce({
+      status: "denied",
+    });
+    const { getByText } = renderScreen();
+
+    await waitFor(() => expect(getByText("Location permission is needed to find restaurants near you.")).toBeTruthy());
+    expect(getByText(/Google Places/)).toBeTruthy();
+    expect(getByText(/No account, nothing stored/)).toBeTruthy();
+  }, 30000);
+
+  // Once coords are obtained by any means — even the Part 15 deep-link path,
+  // which never touches the permission prompt at all — the intro text must
+  // never show. It's strictly a first-load, no-coords-yet state.
+  test("explanatory text never shows when the deck opens via a deep link (coords already known)", async () => {
+    // Deliberately no requestForegroundPermissionsAsync mock here — the
+    // deep-link path (readStartLocation) never calls it at all, so queuing
+    // one would go unconsumed and leak into whichever test runs next.
+    Object.defineProperty(window, "location", {
+      value: { search: "?lat=13.7295&lng=100.5817&area=Thong%20Lo" },
+      writable: true,
+      configurable: true,
+    });
+    mockGetNearby.mockResolvedValue([card("a")]);
+    const { queryByText, getByLabelText } = renderScreen();
+
+    await waitFor(() => expect(getByLabelText("Pass").props.accessibilityState?.disabled).toBeFalsy());
+    expect(queryByText(/Google Places/)).toBeNull();
+
+    Object.defineProperty(window, "location", {
+      value: { search: "" },
+      writable: true,
+      configurable: true,
+    });
+  }, 30000);
+
   test("a liked card never reappears in the deck after a filter-driven reload", async () => {
     mockGetNearby.mockResolvedValueOnce([card("a"), card("b")]);
     const { getByLabelText, queryByText } = renderScreen();

@@ -383,6 +383,9 @@ export function DeckScreen() {
   const deckDone = !loading && !error && cards.length > 0 && index >= cards.length;
   const canWiden = effectiveRadius < MAX_RADIUS_M;
   const outOfCoverage = !!coords && !inCoverage(coords.lat, coords.lng);
+  // The one screen state a brand-new visitor with no location granted yet
+  // (no coords ever obtained) is guaranteed to land on — see needLocationDetail.
+  const showIntro = !coords && error === t("needLocation");
 
   return (
     <View style={styles.root}>
@@ -432,6 +435,8 @@ export function DeckScreen() {
               <Text style={styles.messageText}>{error}</Text>
               {outOfCoverage ? (
                 <Text style={[styles.messageText, styles.messageHint]}>{t("coverageEmptyHint")}</Text>
+              ) : showIntro ? (
+                <Text style={[styles.messageText, styles.messageHint]}>{t("needLocationDetail")}</Text>
               ) : null}
               <View style={styles.messageActions}>
                 <Pressable style={styles.retry} onPress={load}>

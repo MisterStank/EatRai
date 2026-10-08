@@ -27,6 +27,13 @@ const en = {
 
   // deck states
   needLocation: "Location permission is needed to find restaurants near you.",
+  // Only shown on the very first load, before any location has ever been
+  // obtained (see DeckScreen's showIntro) — this is the one screen state a
+  // brand-new visitor with no location granted yet (e.g. an AdSense
+  // reviewer) is guaranteed to see, so it carries real explanatory text
+  // instead of just the one-line permission prompt above.
+  needLocationDetail:
+    "EatRai shows real nearby restaurants one at a time — rating, price, distance, hours and photos pulled live from Google Places. Swipe to shortlist, swipe to skip. No account, nothing stored on our servers.",
   locationFailed: "Couldn't get your location. Check location services and try again.",
   locationTimedOut: "Getting your location is taking a while. Try again, or search an area.",
   loadFailed: "Couldn't load restaurants.",
@@ -193,6 +200,8 @@ const th: Record<Key, string> = {
   showRestaurants: "ดูร้านอาหาร",
 
   needLocation: "ต้องเปิดสิทธิ์ตำแหน่งเพื่อค้นหาร้านอาหารใกล้คุณ",
+  needLocationDetail:
+    "EatRai แสดงร้านอาหารใกล้ตัวจริงให้ทีละร้าน พร้อมคะแนน ราคา ระยะทาง เวลาเปิด และรูปภาพ ดึงข้อมูลสดจาก Google Places ปัดเพื่อเก็บไว้หรือข้ามผ่าน ไม่ต้องสมัครสมาชิก ไม่มีการเก็บข้อมูลไว้บนเซิร์ฟเวอร์",
   locationFailed: "ไม่สามารถระบุตำแหน่งได้ ตรวจสอบบริการตำแหน่งแล้วลองใหม่",
   locationTimedOut: "ระบุตำแหน่งใช้เวลานาน ลองใหม่ หรือค้นหาย่านที่ต้องการ",
   loadFailed: "โหลดร้านอาหารไม่สำเร็จ",
