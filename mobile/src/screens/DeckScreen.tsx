@@ -431,7 +431,7 @@ export function DeckScreen() {
           {loading ? (
             <SkeletonCard />
           ) : error ? (
-            <View style={styles.message}>
+            <View style={styles.message} testID="deck-message">
               <Text style={styles.messageText}>{error}</Text>
               {outOfCoverage ? (
                 <Text style={[styles.messageText, styles.messageHint]}>{t("coverageEmptyHint")}</Text>
@@ -439,34 +439,34 @@ export function DeckScreen() {
                 <Text style={[styles.messageText, styles.messageHint]}>{t("needLocationDetail")}</Text>
               ) : null}
               <View style={styles.messageActions}>
-                <Pressable style={styles.retry} onPress={load}>
+                <Pressable style={styles.retry} onPress={load} accessibilityRole="button">
                   <Text style={styles.retryText}>{t("tryAgain")}</Text>
                 </Pressable>
-                <Pressable style={styles.linkBtn} onPress={() => setShowLocation(true)}>
+                <Pressable style={styles.linkBtn} accessibilityRole="button" onPress={() => setShowLocation(true)}>
                   <Text style={styles.linkText}>{t("changeLocation")}</Text>
                 </Pressable>
               </View>
             </View>
           ) : deckDone ? (
-            <View style={styles.message}>
+            <View style={styles.message} testID="deck-message">
               <Text style={styles.messageText}>{liked.length > 0 ? t("allDone") : t("allDoneNoLikes")}</Text>
               {liked.length > 0 ? (
-                <Pressable style={[styles.retry, styles.retrySpaced]} onPress={() => setShowDecide(true)}>
+                <Pressable style={[styles.retry, styles.retrySpaced]} onPress={() => setShowDecide(true)} accessibilityRole="button">
                   <Text style={styles.retryText}>{t("decideFromSaved", { n: liked.length })}</Text>
                 </Pressable>
               ) : null}
               <View style={styles.messageActions}>
                 {liked.length > 0 ? (
-                  <Pressable style={styles.linkBtn} onPress={() => setShowLiked(true)}>
+                  <Pressable style={styles.linkBtn} accessibilityRole="button" onPress={() => setShowLiked(true)}>
                     <Text style={styles.linkText}>{t("seeYourN", { n: liked.length })}</Text>
                   </Pressable>
                 ) : null}
                 {canWiden ? (
-                  <Pressable style={styles.linkBtn} onPress={widenSearch}>
+                  <Pressable style={styles.linkBtn} accessibilityRole="button" onPress={widenSearch}>
                     <Text style={styles.linkText}>{t("startOver")}</Text>
                   </Pressable>
                 ) : null}
-                <Pressable style={styles.linkBtn} onPress={() => setShowLocation(true)}>
+                <Pressable style={styles.linkBtn} accessibilityRole="button" onPress={() => setShowLocation(true)}>
                   <Text style={styles.linkText}>{t("changeLocation")}</Text>
                 </Pressable>
               </View>
@@ -498,7 +498,12 @@ export function DeckScreen() {
         </View>
 
         {liked.length > 0 && !deckDone ? (
-          <Pressable style={[styles.likedPill, { bottom: insets.bottom + pillOffset }]} onPress={() => setShowLiked(true)}>
+          <Pressable
+            style={[styles.likedPill, { bottom: insets.bottom + pillOffset }]}
+            onPress={() => setShowLiked(true)}
+            testID="liked-pill"
+            accessibilityRole="button"
+          >
             <Feather name="heart" size={13} color={color.like} />
             <Text style={styles.likedPillText}>{t("nLiked", { n: liked.length })}</Text>
             <Feather name="chevron-right" size={14} color={color.inkFaint} />

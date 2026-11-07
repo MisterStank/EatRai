@@ -1,0 +1,52 @@
+{
+  "cards": [
+    {
+      "id": "e2e-khao-soi-corner",
+      "name": "Khao Soi Corner",
+      "address": "Banthat Thong Rd, Bangkok",
+      "priceLevel": 1,
+      "priceRange": null,
+      "rating": 4.6,
+      "ratingCount": 812,
+      "photoUrls": [],
+      "cuisines": ["Northern", "Noodles"],
+      "location": { "lat": 13.7372, "lng": 100.5325 },
+      "distanceM": 120,
+      "openNow": true,
+      "openKnown": true,
+      "mapsUri": "https://maps.google.com/?cid=1"
+    },
+    {
+      "id": "e2e-somtam-stand",
+      "name": "Somtam Stand",
+      "address": "Soi Chula 42, Bangkok",
+      "priceLevel": 1,
+      "priceRange": null,
+      "rating": 4.3,
+      "ratingCount": 365,
+      "photoUrls": [],
+      "cuisines": ["Isaan", "Thai"],
+      "location": { "lat": 13.7381, "lng": 100.5331 },
+      "distanceM": 260,
+      "openNow": true,
+      "openKnown": true,
+      "mapsUri": "https://maps.google.com/?cid=2"
+    },
+    {
+      "id": "e2e-mango-sticky-rice-bar",
+      "name": "Mango Sticky Rice Bar",
+      "address": "Samyan, Bangkok",
+      "priceLevel": 2,
+      "priceRange": null,
+      "rating": 4.4,
+      "ratingCount": 1290,
+      "photoUrls": [],
+      "cuisines": ["Dessert"],
+      "location": { "lat": 13.7340, "lng": 100.5290 },
+      "distanceM": 430,
+      "openNow": false,
+      "openKnown": true,
+      "mapsUri": "https://maps.google.com/?cid=3"
+    }
+  ]
+}
