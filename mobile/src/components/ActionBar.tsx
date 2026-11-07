@@ -43,6 +43,7 @@ export function ActionBar({
         disabled={!canUndo}
         style={[styles.btn, styles.sm, !canUndo && styles.faded]}
         hitSlop={8}
+        accessibilityRole="button"
         accessibilityLabel={t("a11yUndo")}
       >
         <Feather name="rotate-ccw" size={18} color={color.inkSoft} />
@@ -54,6 +55,7 @@ export function ActionBar({
           disabled={disabled || !adSkipReady}
           style={[styles.skipAd, disabled && styles.faded]}
           hitSlop={8}
+          accessibilityRole="button"
           accessibilityLabel={adSkipReady ? t("a11ySkipAd") : t("skipAdIn", { n: adSkipSecondsLeft })}
         >
           {!adSkipReady ? (
@@ -71,6 +73,7 @@ export function ActionBar({
             disabled={disabled}
             style={[styles.btn, styles.nope, disabled && styles.faded]}
             hitSlop={8}
+            accessibilityRole="button"
             accessibilityLabel={t("a11yPass")}
           >
             <Feather name="x" size={24} color={color.nope} />
@@ -81,6 +84,7 @@ export function ActionBar({
             disabled={disabled}
             style={[styles.btn, styles.like, disabled && styles.faded]}
             hitSlop={8}
+            accessibilityRole="button"
             accessibilityLabel={t("a11yLike")}
           >
             <Feather name="heart" size={26} color={color.like} />
@@ -93,6 +97,7 @@ export function ActionBar({
         disabled={disabled}
         style={[styles.btn, styles.sm, disabled && styles.faded]}
         hitSlop={8}
+        accessibilityRole="button"
         accessibilityLabel={isAd ? t("a11ySupportDev") : t("a11yDirections")}
       >
         <Feather name={isAd ? "coffee" : "navigation"} size={18} color={color.inkSoft} />

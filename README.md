@@ -50,6 +50,39 @@ To use live data, put a **Places API (New)** key in `backend/.env`
 (`GOOGLE_PLACES_API_KEY=...`) and restart — the app switches to real nearby
 results and photos everywhere, no code change.
 
+## E2E tests
+
+Playwright tests live in `e2e/` (a standalone package next to `mobile/` and
+`backend/`). Requires Node and Go.
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium   # once
+npx playwright test               # everything: UI (desktop + Pixel 7) and API
+npx playwright test --project=chromium   # one project
+npx playwright show-report        # HTML report from the last run
+```
+
+`playwright.config.ts` starts both servers itself (and reuses them if they're
+already running locally):
+
+- **Web:** a production `expo export --platform web` built with
+  `EXPO_PUBLIC_API_URL=http://api.e2e.test`, served statically on `:4173`. That
+  host doesn't exist; the UI tests answer every call to it with `page.route()`
+  and the JSON in `e2e/fixtures/`, so they never touch Google Places or need a
+  key, and an unmocked call fails loudly.
+- **API:** the real Go proxy in mock mode on `:8099`, with a locked-down origin
+  gate and `RATE_LIMIT_RPM=5`, for the request-level tests in `e2e/api/`.
+
+| Suite | Covers |
+|---|---|
+| `ui/deck.spec.ts` | first card renders from the API; Like / Pass buttons advance the deck; a mouse drag swipes a card; liked places show in the saved list and survive a reload (localStorage); empty state; error state for a 500 and a 429 |
+| `api/proxy.spec.ts` | `/status` health; allowed origin gets a CORS header; unknown origin gets 403; rate limiter returns 429 + `Retry-After` |
+
+CI runs it as the `E2E (Playwright)` job in `.github/workflows/ci.yml` and
+uploads the HTML report and traces when it fails.
+
 ## Deploy
 
 Backend: `backend/Dockerfile` → any container host (Cloud Run / Fly / Render) or a

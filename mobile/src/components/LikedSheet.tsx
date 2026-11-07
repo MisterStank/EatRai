@@ -59,7 +59,7 @@ export function LikedSheet({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.screen}>
+      <View style={styles.screen} testID="liked-sheet">
         <Pressable style={styles.close} onPress={onClose} hitSlop={8}>
           <Feather name="x" size={18} color={color.ink} />
         </Pressable>
@@ -72,7 +72,7 @@ export function LikedSheet({
 
         <ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: space(4) }} showsVerticalScrollIndicator={false}>
           {liked.map((c) => (
-            <View key={c.id} style={styles.row}>
+            <View key={c.id} style={styles.row} testID="liked-item">
               <Pressable style={styles.rowMain} onPress={() => setDetail(c)}>
                 {c.photoUrls?.[0] ? (
                   <Image source={{ uri: c.photoUrls[0] }} style={styles.thumb} />
